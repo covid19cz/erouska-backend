@@ -14,7 +14,6 @@ import (
 
 	"github.com/covid19cz/erouska-backend/internal/hello"
 	"github.com/covid19cz/erouska-backend/internal/logging"
-	"go.opencensus.io/plugin/ochttp"
 )
 
 // Config holds server config
@@ -80,10 +79,12 @@ func NewServer(ctx context.Context, config *Config) (*Server, error) {
 
 // ServeHTTPHandler serves with the http handler
 func (s *Server) ServeHTTPHandler(ctx context.Context, handler http.Handler) error {
+
 	return s.ServeHTTP(ctx, &http.Server{
-		Handler: &ochttp.Handler{
-			Handler: handler,
-		},
+		Handler: handler,
+		// Good practice: enforce timeouts for servers you create!
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	})
 }
 
