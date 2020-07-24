@@ -16,7 +16,6 @@
 node_modules
 #!include:.gitignore
 
-# TEMPORARY! TODO: DELETE
 cmd
 examples
 Makefile

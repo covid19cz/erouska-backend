@@ -18,7 +18,7 @@ func TestSayHello(t *testing.T) {
 	}
 
 	for _, table := range tables {
-		greeting := SayHello(table.x)
+		greeting := sayHello(table.x)
 
 		diff := cmp.Diff(greeting, table.y)
 		if diff != "" {

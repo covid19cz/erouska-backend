@@ -3,10 +3,8 @@ package httpserver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"html"
 	"net"
 	"net/http"
 	"strconv"
@@ -34,20 +32,7 @@ type Server struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var d struct {
-		Name string `json:"name"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
-		fmt.Fprint(w, hello.SayHello(""))
-		return
-	}
-	if d.Name == "" {
-		fmt.Fprint(w, hello.SayHello(""))
-		return
-	}
-
-	fmt.Fprint(w, hello.SayHello(html.EscapeString(d.Name)))
+	hello.Hello(w, r)
 }
 
 // NewHandler creates the HTTP handler
