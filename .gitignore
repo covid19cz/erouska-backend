@@ -1,0 +1,4 @@
+bin
+.serverless
+.editorconfig
+.vscode/
