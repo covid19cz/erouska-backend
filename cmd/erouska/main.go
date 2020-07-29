@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/covid19cz/erouska-backend/pkg/logging"
 	"net/http"
 
-	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/sethvargo/go-signalcontext"
 
 	server "github.com/covid19cz/erouska-backend/pkg/httpserver"
