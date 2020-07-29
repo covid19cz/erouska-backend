@@ -5,13 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/logging"
 	"net"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/covid19cz/erouska-backend/internal/hello"
-	"github.com/covid19cz/erouska-backend/internal/logging"
 )
 
 // Config holds server config
