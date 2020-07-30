@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	ers "errors"
 	"fmt"
-	"github.com/covid19cz/erouska-backend/pkg/constants"
-	"github.com/covid19cz/erouska-backend/pkg/firebase"
-	"github.com/covid19cz/erouska-backend/pkg/firebase/structs"
-	"github.com/covid19cz/erouska-backend/pkg/logging"
-	"github.com/covid19cz/erouska-backend/pkg/utils"
-	"github.com/covid19cz/erouska-backend/pkg/utils/errors"
-	httputils "github.com/covid19cz/erouska-backend/pkg/utils/http"
+	"github.com/avast/retry-go"
+	"github.com/covid19cz/erouska-backend/internal/constants"
+	"github.com/covid19cz/erouska-backend/internal/firebase"
+	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
+	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/utils"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
+	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
@@ -21,7 +22,7 @@ import (
 const NeedsRetry = "needs_retry"
 
 type RegistrationRequest struct {
-	Platform        string `json:"platform" validate:"required, oneof=android ios"`
+	Platform        string `json:"platform" validate:"required,oneof=android ios"`
 	PlatformVersion string `json:"platformVersion" validate:"required"`
 	Manufacturer    string `json:"manufacturer" validate:"required"`
 	Model           string `json:"model" validate:"required"`
@@ -53,41 +54,12 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debugf("Handling registration request: %+v", request)
 
-tryNextEhrid:
-
-	var ehrid = utils.GenerateEHrid()
-	var doc = firebase.FirestoreClient.Collection(constants.CollectionRegistrations).Doc(ehrid)
-
-	err = firebase.FirestoreClient.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-		_, err := tx.Get(doc)
-
-		if err == nil {
-			// doc found, need retry
-			return &errors.CustomError{Msg: NeedsRetry}
-		}
-
-		if status.Code(err) != codes.NotFound {
-			return fmt.Errorf("Error while querying Firestore: %v", err)
-		}
-		// not found, great!
-
-		var registration = structs.Registration(request)
-		logger.Debugf("Generated new eHrid %v, saving registration %v", ehrid, registration)
-
-		return tx.Set(doc, registration)
-	})
-
+	ehrid, err := register(ctx, structs.Registration(request))
 	if err != nil {
-		if err.Error() == NeedsRetry {
-			goto tryNextEhrid
-		} else {
-			response := fmt.Sprintf("Error: %v", err)
-			http.Error(w, response, http.StatusInternalServerError)
-			return
-		}
+		response := fmt.Sprintf("Error: %v", err)
+		http.Error(w, response, http.StatusInternalServerError)
+		return
 	}
-
-	// well done, we have eHrid to return!
 
 	response := RegistrationResponse{ehrid}
 
@@ -99,13 +71,47 @@ tryNextEhrid:
 
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(js)
-
 	if err != nil {
 		response := fmt.Sprintf("Error: %v", err)
 		http.Error(w, response, http.StatusInternalServerError)
 		return
 	}
+}
 
-	return
+func register(ctx context.Context, registration structs.Registration) (string, error) {
+	logger := logging.FromContext(ctx)
 
+	var ehrid string
+
+	err := retry.Do(
+		func() error {
+			ehrid = utils.GenerateEHrid()
+			var doc = firebase.FirestoreClient.Collection(constants.CollectionRegistrations).Doc(ehrid)
+
+			logger.Debugf("Trying eHrid: %v", ehrid)
+
+			return firebase.FirestoreClient.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+				_, err := tx.Get(doc)
+
+				if err == nil {
+					// doc found, need retry
+					return &errors.CustomError{Msg: NeedsRetry}
+				}
+
+				if status.Code(err) != codes.NotFound {
+					return fmt.Errorf("Error while querying Firestore: %v", err)
+				}
+				// not found, great!
+
+				logger.Infof("Generated new eHrid %v, saving registration %+v", ehrid, registration)
+
+				return tx.Set(doc, registration)
+			})
+		},
+		retry.RetryIf(func(err error) bool {
+			return err.Error() == NeedsRetry
+		}),
+	)
+
+	return ehrid, err
 }

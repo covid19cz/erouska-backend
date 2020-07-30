@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	ers "errors"
 	"fmt"
-	"github.com/covid19cz/erouska-backend/pkg/utils"
-	"github.com/covid19cz/erouska-backend/pkg/utils/errors"
+	"github.com/covid19cz/erouska-backend/internal/utils"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	"github.com/golang/gddo/httputil/header"
 	"io"
 	"net/http"
@@ -38,7 +38,7 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 			return &errors.MalformedRequestError{Status: http.StatusBadRequest, Msg: msg}
 
 		case ers.Is(err, io.ErrUnexpectedEOF):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON")
+			msg := "Request body contains badly-formed JSON"
 			return &errors.MalformedRequestError{Status: http.StatusBadRequest, Msg: msg}
 
 		case ers.As(err, &unmarshalTypeError):

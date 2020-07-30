@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/covid19cz/erouska-backend/pkg/logging"
+	"github.com/covid19cz/erouska-backend/internal/logging"
 	"net/http"
 
 	"github.com/sethvargo/go-signalcontext"
 
-	server "github.com/covid19cz/erouska-backend/pkg/httpserver"
+	server "github.com/covid19cz/erouska-backend/internal/httpserver"
 )
 
 func main() {

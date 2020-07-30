@@ -5,6 +5,7 @@ go 1.13
 require (
 	cloud.google.com/go/firestore v1.2.0
 	firebase.google.com/go v3.13.0+incompatible
+	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang/gddo v0.0.0-20200715224205-051695c33a3f
 	github.com/google/go-cmp v0.4.0
@@ -21,6 +22,6 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.31.0
 )
 
-replace github.com/covid19cz/erouska-backend/pkg/httpserver v0.0.0 => ./pkg/httpserver
+replace github.com/covid19cz/erouska-backend/internal/httpserver v0.0.0 => ./pkg/httpserver
 
 replace github.com/covid19cz/erouska-backend/internal/hello v0.0.0 => ../internal/hello

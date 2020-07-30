@@ -5,7 +5,7 @@ import (
 	"context"
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/db"
-	"github.com/covid19cz/erouska-backend/pkg/constants"
+	"github.com/covid19cz/erouska-backend/internal/constants"
 	"log"
 )
 

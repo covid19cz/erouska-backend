@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/covid19cz/erouska-backend/pkg/logging"
+	"github.com/covid19cz/erouska-backend/internal/logging"
 	"net"
 	"net/http"
 	"strconv"

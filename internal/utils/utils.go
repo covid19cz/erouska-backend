@@ -20,7 +20,7 @@ func GenerateEHrid() string {
 	b[0] = 'e'
 
 	for i := 1; i <= 6; i++ {
-		b[i] = byte(SeededRand.Intn(27) + 65)
+		b[i] = byte(SeededRand.Intn(26) + 65)
 	}
 
 	for i := 7; i <= 9; i++ {
