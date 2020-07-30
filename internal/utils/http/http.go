@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// DecodeJSONBody Decode request body from JSON to struct
 // copied from https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body
 func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 	if r.Header.Get("Content-Type") != "" {

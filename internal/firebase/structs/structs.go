@@ -1,5 +1,6 @@
 package structs
 
+//Registration DB entity for registration.
 type Registration struct {
 	Platform        string `json:"platform"`
 	PlatformVersion string `json:"platformVersion"`

@@ -12,10 +12,10 @@ require (
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sethvargo/go-signalcontext v0.1.0
-	github.com/stretchr/testify v1.5.1 // indirect
+	github.com/stretchr/testify v1.5.1
 	go.opencensus.io v0.22.4 // indirect
 	go.uber.org/zap v1.15.0
-	golang.org/x/tools v0.0.0-20200723000907-a7c6fd066f6d // indirect
+	golang.org/x/tools v0.0.0-20200731060945-b5fad4ed8dd6 // indirect
 	google.golang.org/api v0.29.0 // indirect
 	google.golang.org/grpc v1.28.0
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect

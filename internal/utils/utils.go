@@ -6,14 +6,17 @@ import (
 	"time"
 )
 
+//SeededRand Seeded random
 var SeededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
+//Validate -_-
 var Validate *validator.Validate
 
 func init() {
 	Validate = validator.New()
 }
 
+//GenerateEHrid Generate new eHrid.
 func GenerateEHrid() string {
 	// eLLLLLLNNN, L = letter N = number
 	b := make([]byte, 10)
@@ -28,10 +31,4 @@ func GenerateEHrid() string {
 	}
 
 	return string(b)
-}
-
-func GetTimeNow() *time.Time {
-	t := time.Now()
-
-	return &t
 }

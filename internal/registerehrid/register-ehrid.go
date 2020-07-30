@@ -1,4 +1,4 @@
-package register_ehrid
+package registerehrid
 
 import (
 	"cloud.google.com/go/firestore"
@@ -19,9 +19,9 @@ import (
 	"net/http"
 )
 
-const NeedsRetry = "needs_retry"
+const needsRetry = "needs_retry"
 
-type RegistrationRequest struct {
+type registrationRequest struct {
 	Platform        string `json:"platform" validate:"required,oneof=android ios"`
 	PlatformVersion string `json:"platformVersion" validate:"required"`
 	Manufacturer    string `json:"manufacturer" validate:"required"`
@@ -29,15 +29,16 @@ type RegistrationRequest struct {
 	Locale          string `json:"locale" validate:"required"`
 }
 
-type RegistrationResponse struct {
+type registrationResponse struct {
 	Ehrid string `json:"ehrid"`
 }
 
+//RegisterEhrid Register new user.
 func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
 
-	var request RegistrationRequest
+	var request registrationRequest
 
 	err := httputils.DecodeJSONBody(w, r, &request)
 	if err != nil {
@@ -61,7 +62,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := RegistrationResponse{ehrid}
+	response := registrationResponse{ehrid}
 
 	js, err := json.Marshal(response)
 	if err != nil {
@@ -95,7 +96,7 @@ func register(ctx context.Context, registration structs.Registration) (string, e
 
 				if err == nil {
 					// doc found, need retry
-					return &errors.CustomError{Msg: NeedsRetry}
+					return &errors.CustomError{Msg: needsRetry}
 				}
 
 				if status.Code(err) != codes.NotFound {
@@ -109,7 +110,7 @@ func register(ctx context.Context, registration structs.Registration) (string, e
 			})
 		},
 		retry.RetryIf(func(err error) bool {
-			return err.Error() == NeedsRetry
+			return err.Error() == needsRetry
 		}),
 	)
 

@@ -9,13 +9,16 @@ import (
 	"log"
 )
 
+//FirebaseDbClient -_-
 var FirebaseDbClient *db.Client
+
+//FirestoreClient -_-
 var FirestoreClient *firestore.Client
 
 func init() {
 	ctx := context.Background()
 	conf := &firebase.Config{
-		DatabaseURL: constants.FirebaseUrl,
+		DatabaseURL: constants.FirebaseURL,
 	}
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
