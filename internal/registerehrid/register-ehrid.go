@@ -1,22 +1,22 @@
 package registerehrid
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
 	"encoding/json"
 	ers "errors"
 	"fmt"
+	"net/http"
+
+	"cloud.google.com/go/firestore"
 	"github.com/avast/retry-go"
-	"github.com/covid19cz/erouska-backend/internal/constants"
-	"github.com/covid19cz/erouska-backend/internal/firebase"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"net/http"
 )
 
 const needsRetry = "needs_retry"
@@ -55,7 +55,9 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debugf("Handling registration request: %+v", request)
 
-	ehrid, err := register(ctx, structs.Registration(request))
+	store := store.Client{}
+
+	ehrid, err := register(ctx, store, utils.GenerateEHrid(), structs.Registration(request))
 	if err != nil {
 		response := fmt.Sprintf("Error: %v", err)
 		http.Error(w, response, http.StatusInternalServerError)
@@ -79,19 +81,16 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func register(ctx context.Context, registration structs.Registration) (string, error) {
+func register(ctx context.Context, store store.Storer, ehrid string, registration structs.Registration) (string, error) {
 	logger := logging.FromContext(ctx)
-
-	var ehrid string
 
 	err := retry.Do(
 		func() error {
-			ehrid = utils.GenerateEHrid()
-			var doc = firebase.FirestoreClient.Collection(constants.CollectionRegistrations).Doc(ehrid)
+			var doc = store.Doc(ehrid)
 
 			logger.Debugf("Trying eHrid: %v", ehrid)
 
-			return firebase.FirestoreClient.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+			return store.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 				_, err := tx.Get(doc)
 
 				if err == nil {

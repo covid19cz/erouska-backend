@@ -1,12 +1,13 @@
 package firebase
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
+	"log"
+
+	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/db"
 	"github.com/covid19cz/erouska-backend/internal/constants"
-	"log"
 )
 
 //FirebaseDbClient -_-
