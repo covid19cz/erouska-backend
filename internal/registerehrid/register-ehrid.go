@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
-	"strconv"
 )
 
 const needsRetry = "needs_retry"
@@ -62,7 +61,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 		Manufacturer:    request.Manufacturer,
 		Model:           request.Model,
 		Locale:          request.Locale,
-		CreatedAt:       strconv.FormatInt(utils.GetTimeNow().Unix(), 10),
+		CreatedAt:       utils.GetTimeNow().Unix(),
 	}
 
 	ehrid, err := register(ctx, registration)
