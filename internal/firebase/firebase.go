@@ -3,6 +3,7 @@ package firebase
 import (
 	"context"
 	"log"
+	"os"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -18,9 +19,24 @@ var FirestoreClient *firestore.Client
 
 func init() {
 	ctx := context.Background()
-	conf := &firebase.Config{
-		DatabaseURL: constants.FirebaseURL,
+
+	firebaseURL := constants.FirebaseURL
+
+	url, exists := os.LookupEnv("FIREBASE_URL")
+
+	if exists {
+		firebaseURL = url
 	}
+
+	if firebaseURL == "NOOP" {
+		log.Printf("Mocking Firebase")
+		return
+	}
+
+	conf := &firebase.Config{
+		DatabaseURL: firebaseURL,
+	}
+
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
 		log.Fatalf("firebase.NewApp: %v", err)
