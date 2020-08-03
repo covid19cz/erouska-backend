@@ -17,3 +17,9 @@ Hello, Jaroslav!%
 ```
 PROJECT_ID=<YOUR_GCP_PROJECT> ./scripts/deploy
 ```
+
+## Environment variables
+```
+# for ci/testing set FIREBASE_URL to "NOOP"
+export FIREBASE_URL=NOOP
+```
