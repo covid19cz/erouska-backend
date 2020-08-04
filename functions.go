@@ -1,10 +1,10 @@
 package functions
 
 import (
-	"github.com/covid19cz/erouska-backend/internal/increaseehridattemptscount"
-	"github.com/covid19cz/erouska-backend/internal/increaseipattemptscount"
-	"github.com/covid19cz/erouska-backend/internal/isehridactive"
-	"github.com/covid19cz/erouska-backend/internal/registerehrid"
+	"github.com/covid19cz/erouska-backend/internal/functions/increaseehridattemptscount"
+	"github.com/covid19cz/erouska-backend/internal/functions/increaseipattemptscount"
+	"github.com/covid19cz/erouska-backend/internal/functions/isehridactive"
+	"github.com/covid19cz/erouska-backend/internal/functions/registerehrid"
 
 	"net/http"
 )
