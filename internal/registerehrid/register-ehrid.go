@@ -38,6 +38,7 @@ type registrationResponse struct {
 func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
+	client := store.Client{}
 
 	var request registrationRequest
 
@@ -65,9 +66,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:       utils.GetTimeNow().Unix(),
 	}
 
-	store := store.Client{}
-
-	ehrid, err := register(ctx, store, utils.GenerateEHrid, registration)
+	ehrid, err := register(ctx, client, utils.GenerateEHrid, registration)
 	if err != nil {
 		response := fmt.Sprintf("Error: %v", err)
 		http.Error(w, response, http.StatusInternalServerError)
