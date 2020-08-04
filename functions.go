@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"github.com/covid19cz/erouska-backend/internal/increaseehridattemptscount"
+	"github.com/covid19cz/erouska-backend/internal/increaseipattemptscount"
 	"github.com/covid19cz/erouska-backend/internal/isehridactive"
 	"github.com/covid19cz/erouska-backend/internal/registerehrid"
 
@@ -15,4 +17,14 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 // IsEhridActive IsEhridActive handler.
 func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 	isehridactive.IsEhridActive(w, r)
+}
+
+// IncreaseEhridAttemptsCount IncreaseEhridAttemptsCount handler.
+func IncreaseEhridAttemptsCount(w http.ResponseWriter, r *http.Request) {
+	increaseehridattemptscount.IncreaseEhridAttemptsCount(w, r)
+}
+
+// IncreaseIPAttemptsCount IncreaseIPAttemptsCount handler.
+func IncreaseIPAttemptsCount(w http.ResponseWriter, r *http.Request) {
+	increaseipattemptscount.IncreaseIPAttemptsCount(w, r)
 }
