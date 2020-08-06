@@ -24,23 +24,23 @@ func TestRegister(t *testing.T) {
 	}{
 		{
 			structs.Registration{
-			Platform:        "ios",
-			PlatformVersion: "13.5.1",
-			Manufacturer:    "Apple",
-			Model:           "iPhone 8",
-			Locale:          "cs_CZ",
-		},
-		mockGenEhrid,
+				Platform:        "ios",
+				PlatformVersion: "13.5.1",
+				Manufacturer:    "Apple",
+				Model:           "iPhone 8",
+				Locale:          "cs_CZ",
+			},
+			mockGenEhrid,
 		},
 		{
 			structs.Registration{
-			Platform:        "android",
-			PlatformVersion: "10.2",
-			Manufacturer:    "Samsung",
-			Model:           "Yololo",
-			Locale:          "en_US",
-		},
-		mockGenEhrid,
+				Platform:        "android",
+				PlatformVersion: "10.2",
+				Manufacturer:    "Samsung",
+				Model:           "Yololo",
+				Locale:          "en_US",
+			},
+			mockGenEhrid,
 		},
 	}
 

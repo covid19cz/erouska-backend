@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/covid19cz/erouska-backend/internal/hello"
+	"github.com/covid19cz/erouska-backend/internal/functions/hello"
 )
 
 // Config holds server config
