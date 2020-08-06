@@ -93,3 +93,40 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 
 	return nil
 }
+
+//SendResponse Marshals response into JSON and sends it to the client.
+func SendResponse(w http.ResponseWriter, r *http.Request, response interface{}) {
+	var wrapped = r.Header.Get("X-Erouska-Wrapped") != "false"
+
+	var responseBytes []byte
+
+	if wrapped {
+		r := map[string]interface{}{"data": response}
+		js, err := json.Marshal(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		responseBytes = js
+	} else {
+		js, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		responseBytes = js
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err := w.Write(responseBytes)
+	if err != nil {
+		response := fmt.Sprintf("Error: %v", err)
+		http.Error(w, response, http.StatusInternalServerError)
+		return
+	}
+}
+
+//SendEmptyResponse Marshals empty response into JSON and sends it to the client.
+func SendEmptyResponse(w http.ResponseWriter, r *http.Request) {
+	SendResponse(w, r, struct{}{})
+}

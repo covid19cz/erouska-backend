@@ -92,5 +92,5 @@ func IncreaseIPAttemptsCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// no response
+	httputils.SendEmptyResponse(w, r)
 }

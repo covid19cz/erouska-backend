@@ -1,9 +1,7 @@
 package isehridactive
 
 import (
-	"encoding/json"
 	ers "errors"
-	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
@@ -62,17 +60,5 @@ func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 
 	response := queryResponse{Active: active}
 
-	js, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(js)
-	if err != nil {
-		response := fmt.Sprintf("Error: %v", err)
-		http.Error(w, response, http.StatusInternalServerError)
-		return
-	}
+	httputils.SendResponse(w, r, response)
 }

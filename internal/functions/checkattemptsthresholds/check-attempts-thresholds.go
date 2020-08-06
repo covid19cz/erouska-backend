@@ -2,7 +2,6 @@ package checkattemptsthresholds
 
 import (
 	"context"
-	"encoding/json"
 	ers "errors"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/constants"
@@ -79,21 +78,7 @@ func CheckAttemptsThresholds(w http.ResponseWriter, r *http.Request) {
 
 	response := queryResponse{ThresholdOk: isOk}
 
-	js, err := json.Marshal(response)
-	if err != nil {
-		logger.Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(js)
-	if err != nil {
-		response := fmt.Sprintf("Error: %v", err)
-		logger.Error(err)
-		http.Error(w, response, http.StatusInternalServerError)
-		return
-	}
+	httputils.SendResponse(w, r, response)
 }
 
 func getNotifsCount(ctx context.Context, client store.Client, collection string, key string, date string) (int, error) {

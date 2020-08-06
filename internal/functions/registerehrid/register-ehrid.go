@@ -2,7 +2,6 @@ package registerehrid
 
 import (
 	"context"
-	"encoding/json"
 	ers "errors"
 	"fmt"
 	"net/http"
@@ -75,19 +74,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 
 	response := registrationResponse{ehrid}
 
-	js, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(js)
-	if err != nil {
-		response := fmt.Sprintf("Error: %v", err)
-		http.Error(w, response, http.StatusInternalServerError)
-		return
-	}
+	httputils.SendResponse(w, r, response)
 }
 
 func register(ctx context.Context, store store.Storer, generateEhrid func() string, registration structs.Registration) (string, error) {
