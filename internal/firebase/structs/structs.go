@@ -11,3 +11,8 @@ type Registration struct {
 	LastNotificationStatus    string `json:"lastNotificationStatus"`
 	LastNotificationUpdatedAt int64  `json:"lastNotificationUpdatedAt"`
 }
+
+//NotificationCounter DB entity for notification counter.
+type NotificationCounter struct {
+	NotificationsCount int `json:"notificationsCount"`
+}

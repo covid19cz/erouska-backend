@@ -7,6 +7,7 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/functions/increasenotificationscounter"
 	"github.com/covid19cz/erouska-backend/internal/functions/isehridactive"
 	"github.com/covid19cz/erouska-backend/internal/functions/registerehrid"
+	"github.com/covid19cz/erouska-backend/internal/functions/registernotification"
 
 	"net/http"
 )
@@ -39,4 +40,9 @@ func CheckAttemptsThresholds(w http.ResponseWriter, r *http.Request) {
 // IncreaseNotificationsCounter IncreaseNotificationsCounter handler.
 func IncreaseNotificationsCounter(w http.ResponseWriter, r *http.Request) {
 	increasenotificationscounter.IncreaseNotificationsCounter(w, r)
+}
+
+// RegisterNotification RegisterNotification handler.
+func RegisterNotification(w http.ResponseWriter, r *http.Request) {
+	registernotification.RegisterNotification(w, r)
 }
