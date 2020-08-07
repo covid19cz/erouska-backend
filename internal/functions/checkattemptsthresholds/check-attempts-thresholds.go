@@ -2,14 +2,13 @@ package checkattemptsthresholds
 
 import (
 	"context"
-	ers "errors"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
-	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
@@ -34,18 +33,7 @@ func CheckAttemptsThresholds(w http.ResponseWriter, r *http.Request) {
 
 	var request queryRequest
 
-	err := httputils.DecodeJSONBody(w, r, &request)
-	if err != nil {
-		var mr *errors.MalformedRequestError
-		if ers.As(err, &mr) {
-			logger.Debugf("Cannot handle CheckAttemptsThresholds request: %+v", mr.Msg)
-			logger.Error(err)
-			http.Error(w, mr.Msg, mr.Status)
-		} else {
-			logger.Debugf("Cannot handle CheckAttemptsThresholds request due to unknown error: %+v", err.Error())
-			logger.Error(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+	if !httputils.DecodeJSONOrReportError(w, r, &request) {
 		return
 	}
 
@@ -60,17 +48,15 @@ func CheckAttemptsThresholds(w http.ResponseWriter, r *http.Request) {
 
 	ehridNotifCount, err := getNotifsCount(ctx, client, constants.CollectionDailyNotificationAttemptsEhrid, request.Ehrid, date)
 	if err != nil {
-		response := fmt.Sprintf("Error: %v", err)
-		logger.Error(err)
-		http.Error(w, response, http.StatusInternalServerError)
+		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
+		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
 		return
 	}
 
 	ipNotifCount, err := getNotifsCount(ctx, client, constants.CollectionDailyNotificationAttemptsIP, request.IP, date)
 	if err != nil {
-		response := fmt.Sprintf("Error: %v", err)
-		logger.Error(err)
-		http.Error(w, response, http.StatusInternalServerError)
+		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
+		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
 		return
 	}
 

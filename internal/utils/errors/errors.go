@@ -1,5 +1,7 @@
 package errors
 
+import rpccode "google.golang.org/genproto/googleapis/rpc/code"
+
 //CustomError Custom error (who would guess)
 type CustomError struct {
 	Msg string
@@ -11,7 +13,7 @@ func (e *CustomError) Error() string {
 
 //MalformedRequestError Error for malformed request
 type MalformedRequestError struct {
-	Status int
+	Status rpccode.Code
 	Msg    string
 }
 

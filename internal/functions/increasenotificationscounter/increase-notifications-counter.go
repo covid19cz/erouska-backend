@@ -3,15 +3,14 @@ package increasenotificationscounter
 import (
 	"cloud.google.com/go/firestore"
 	"context"
-	ers "errors"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
-	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
@@ -31,16 +30,7 @@ func IncreaseNotificationsCounter(w http.ResponseWriter, r *http.Request) {
 
 	var request request
 
-	err := httputils.DecodeJSONBody(w, r, &request)
-	if err != nil {
-		var mr *errors.MalformedRequestError
-		if ers.As(err, &mr) {
-			logger.Debugf("Cannot handle IncreaseNotificationsCounter request: %+v", mr.Msg)
-			http.Error(w, mr.Msg, mr.Status)
-		} else {
-			logger.Debugf("Cannot handle IncreaseNotificationsCounter request due to unknown error: %+v", err.Error())
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+	if !httputils.DecodeJSONOrReportError(w, r, &request) {
 		return
 	}
 
@@ -56,7 +46,7 @@ func IncreaseNotificationsCounter(w http.ResponseWriter, r *http.Request) {
 
 		doc := client.Doc(constants.CollectionNotificationCounters, date)
 
-		err = client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		err := client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 			rec, err := tx.Get(doc)
 
 			if err != nil {
@@ -83,7 +73,8 @@ func IncreaseNotificationsCounter(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
+			httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
 			return
 		}
 	}

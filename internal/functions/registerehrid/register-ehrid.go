@@ -2,8 +2,8 @@ package registerehrid
 
 import (
 	"context"
-	ers "errors"
 	"fmt"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"net/http"
 
 	"cloud.google.com/go/firestore"
@@ -41,16 +41,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 
 	var request registrationRequest
 
-	err := httputils.DecodeJSONBody(w, r, &request)
-	if err != nil {
-		var mr *errors.MalformedRequestError
-		if ers.As(err, &mr) {
-			logger.Debugf("Cannot handle registration request: %+v", mr.Msg)
-			http.Error(w, mr.Msg, mr.Status)
-		} else {
-			logger.Debugf("Cannot handle registration request due to unknown error: %+v", err.Error())
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+	if !httputils.DecodeJSONOrReportError(w, r, &request) {
 		return
 	}
 
@@ -67,8 +58,8 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 
 	ehrid, err := register(ctx, client, utils.GenerateEHrid, registration)
 	if err != nil {
-		response := fmt.Sprintf("Error: %v", err)
-		http.Error(w, response, http.StatusInternalServerError)
+		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
+		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
 		return
 	}
 
