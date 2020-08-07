@@ -16,3 +16,9 @@ type Registration struct {
 type NotificationCounter struct {
 	NotificationsCount int `json:"notificationsCount"`
 }
+
+//VerificationCodeMetadata DB entity for verification code metadata.
+type VerificationCodeMetadata struct {
+	VsMetadata map[string]interface{} `json:"vsMetadata"`
+	IssuedAt   int64                  `json:"issuedAt"`
+}
