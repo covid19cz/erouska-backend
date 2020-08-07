@@ -14,3 +14,6 @@ const CollectionDailyNotificationAttemptsIP = "dailyNotificationAttemptsIP"
 
 //CollectionNotificationCounters Name of the collection.
 const CollectionNotificationCounters = "notificationCounters"
+
+//CollectionVerificationCodes Name of the collection.
+const CollectionVerificationCodes = "verificationCodes"
