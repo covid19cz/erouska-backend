@@ -6,6 +6,7 @@ import (
 	ers "errors"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/constants"
+	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
@@ -64,17 +65,17 @@ func IncreaseNotificationsCounter(w http.ResponseWriter, r *http.Request) {
 				}
 				// not found:
 
-				return tx.Set(doc, map[string]int{"notificationsCount": 1})
+				return tx.Set(doc, structs.NotificationCounter{NotificationsCount: 1})
 			}
 
-			var data map[string]int
+			var data structs.NotificationCounter
 			err = rec.DataTo(&data)
 			if err != nil {
 				return fmt.Errorf("Error while querying Firestore: %v", err)
 			}
 			logger.Debugf("Found data: %+v", data)
 
-			data["notificationsCount"]++
+			data.NotificationsCount++
 
 			logger.Debugf("Saving updated daily state: %+v", data)
 
@@ -87,5 +88,5 @@ func IncreaseNotificationsCounter(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// no response
+	httputils.SendEmptyResponse(w, r)
 }
