@@ -11,3 +11,6 @@ const CollectionDailyNotificationAttemptsEhrid = "dailyNotificationAttemptsEhrid
 
 //CollectionDailyNotificationAttemptsIP Name of the collection.
 const CollectionDailyNotificationAttemptsIP = "dailyNotificationAttemptsIP"
+
+//CollectionNotificationCounters Name of the collection.
+const CollectionNotificationCounters = "notificationCounters"
