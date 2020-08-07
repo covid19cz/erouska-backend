@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	ers "errors"
 	"fmt"
@@ -26,6 +27,20 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
 
 	dec := json.NewDecoder(r.Body)
+
+	if r.Header.Get("X-Erouska-Wrapped") != "false" {
+		wrappedRequest := make(map[string]json.RawMessage)
+
+		err := dec.Decode(&wrappedRequest)
+		_, found := wrappedRequest["data"]
+		if err != nil || !found {
+			msg := "Request body must be wrapped in 'data' field"
+			return &errors.MalformedRequestError{Status: http.StatusBadRequest, Msg: msg}
+		}
+
+		dec = json.NewDecoder(bytes.NewBuffer(wrappedRequest["data"]))
+	}
+
 	dec.DisallowUnknownFields()
 
 	err := dec.Decode(&dst)
