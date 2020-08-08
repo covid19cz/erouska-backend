@@ -1,5 +1,6 @@
 steps:
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
   - functions
   - deploy
@@ -11,6 +12,7 @@ steps:
   - --memory=128
   - --allow-unauthenticated
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
   - functions
   - deploy
@@ -22,6 +24,7 @@ steps:
   - --memory=128
   - --allow-unauthenticated
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
     - functions
     - deploy
@@ -33,6 +36,7 @@ steps:
     - --memory=128
     - --allow-unauthenticated
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
     - functions
     - deploy
@@ -44,6 +48,7 @@ steps:
     - --memory=128
     - --allow-unauthenticated
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
     - functions
     - deploy
@@ -55,6 +60,7 @@ steps:
     - --memory=128
     - --allow-unauthenticated
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
     - functions
     - deploy
@@ -66,6 +72,7 @@ steps:
     - --memory=128
     - --allow-unauthenticated
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
     - functions
     - deploy
@@ -76,8 +83,8 @@ steps:
     - --runtime=go113
     - --memory=128
     - --allow-unauthenticated
-
 - name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
   args:
     - functions
     - deploy
