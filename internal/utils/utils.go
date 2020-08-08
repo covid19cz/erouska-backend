@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"gopkg.in/go-playground/validator.v9"
 	"math/rand"
 	"time"
+
+	"gopkg.in/go-playground/validator.v9"
 )
 
 //SeededRand Seeded random
@@ -16,7 +17,7 @@ func init() {
 	Validate = validator.New()
 }
 
-//GenerateEHrid Generate new eHrid.
+//GenerateEHrid generates new eHrid
 func GenerateEHrid() string {
 	// eLLLLLLNNN, L = letter N = number
 	b := make([]byte, 10)
@@ -33,7 +34,7 @@ func GenerateEHrid() string {
 	return string(b)
 }
 
-//GenerateVerificationCode Generate new VC.
+//GenerateVerificationCode generates new VC
 func GenerateVerificationCode() string {
 	// NNNNNNNN, N = number [0-9]
 	b := make([]byte, 8)
@@ -45,7 +46,7 @@ func GenerateVerificationCode() string {
 	return string(b)
 }
 
-//GetTimeNow Gets current time (who yould guess)
+// GetTimeNow Gets current time
 func GetTimeNow() *time.Time {
 	t := time.Now()
 
