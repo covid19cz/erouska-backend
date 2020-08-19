@@ -3,6 +3,9 @@ package checkattemptsthresholds
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
@@ -11,13 +14,10 @@ import (
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"net/http"
-	"strconv"
 )
 
 type queryRequest struct {
 	Ehrid string `json:"ehrid" validate:"required"`
-	IP    string `json:"ip" validate:"required"`
 	Date  int    `json:"date"`
 }
 
@@ -53,14 +53,7 @@ func CheckAttemptsThresholds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ipNotifCount, err := getNotifsCount(ctx, client, constants.CollectionDailyNotificationAttemptsIP, request.IP, date)
-	if err != nil {
-		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
-		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
-		return
-	}
-
-	var isOk = ehridNotifCount < 1 && ipNotifCount < 100
+	var isOk = ehridNotifCount < 1
 
 	response := queryResponse{ThresholdOk: isOk}
 
