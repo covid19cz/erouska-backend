@@ -1,9 +1,11 @@
 package registernotification
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
+	"net/http"
+
+	"cloud.google.com/go/firestore"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
@@ -13,12 +15,10 @@ import (
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"net/http"
 )
 
 type request struct {
 	Ehrid string `json:"ehrid" validate:"required"`
-	IP    string `json:"ip" validate:"required"`
 }
 
 //RegisterNotification Handler

@@ -3,7 +3,6 @@ package functions
 import (
 	"github.com/covid19cz/erouska-backend/internal/functions/checkattemptsthresholds"
 	"github.com/covid19cz/erouska-backend/internal/functions/increaseehridattemptscount"
-	"github.com/covid19cz/erouska-backend/internal/functions/increaseipattemptscount"
 	"github.com/covid19cz/erouska-backend/internal/functions/increasenotificationscounter"
 	"github.com/covid19cz/erouska-backend/internal/functions/isehridactive"
 	"github.com/covid19cz/erouska-backend/internal/functions/provideverificationcode"
@@ -26,11 +25,6 @@ func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 // IncreaseEhridAttemptsCount IncreaseEhridAttemptsCount handler.
 func IncreaseEhridAttemptsCount(w http.ResponseWriter, r *http.Request) {
 	increaseehridattemptscount.IncreaseEhridAttemptsCount(w, r)
-}
-
-// IncreaseIPAttemptsCount IncreaseIPAttemptsCount handler.
-func IncreaseIPAttemptsCount(w http.ResponseWriter, r *http.Request) {
-	increaseipattemptscount.IncreaseIPAttemptsCount(w, r)
 }
 
 // CheckAttemptsThresholds CheckAttemptsThresholds handler.

@@ -39,17 +39,6 @@ steps:
   args:
     - functions
     - deploy
-    - IncreaseIPAttemptsCount
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
     - CheckAttemptsThresholds
     - --source=.
     - --trigger-http
