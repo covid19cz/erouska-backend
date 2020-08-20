@@ -80,3 +80,14 @@ steps:
     - --runtime=go113
     - --memory=128
     - --allow-unauthenticated
+- name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
+  args:
+    - functions
+    - deploy
+    - DownloadCovidDataTotal
+    - --source=.
+    - --trigger-http
+    - --region=europe-west1
+    - --runtime=go113
+    - --memory=128

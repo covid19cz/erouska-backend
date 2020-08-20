@@ -22,3 +22,13 @@ type VerificationCodeMetadata struct {
 	VsMetadata map[string]interface{} `json:"vsMetadata"`
 	IssuedAt   int64                  `json:"issuedAt"`
 }
+
+// IntegerValue represents integer (as string) in firestore events
+type IntegerValue struct {
+	IntegerValue string `json:"integerValue"`
+}
+
+// StringValue represents strings in firestore events
+type StringValue struct {
+	StringValue string `json:"stringValue"`
+}
