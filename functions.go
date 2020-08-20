@@ -2,6 +2,7 @@ package functions
 
 import (
 	"github.com/covid19cz/erouska-backend/internal/functions/checkattemptsthresholds"
+	"github.com/covid19cz/erouska-backend/internal/functions/coviddata"
 	"github.com/covid19cz/erouska-backend/internal/functions/increaseehridattemptscount"
 	"github.com/covid19cz/erouska-backend/internal/functions/increasenotificationscounter"
 	"github.com/covid19cz/erouska-backend/internal/functions/isehridactive"
@@ -45,4 +46,9 @@ func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 // ProvideVerificationCode ProvideVerificationCode handler.
 func ProvideVerificationCode(w http.ResponseWriter, r *http.Request) {
 	provideverificationcode.ProvideVerificationCode(w, r)
+}
+
+// DownloadCovidDataTotal handler.
+func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
+	coviddata.DownloadCovidDataTotal(w, r)
 }
