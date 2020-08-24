@@ -91,3 +91,15 @@ steps:
     - --region=europe-west1
     - --runtime=go113
     - --memory=128
+- name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
+  args:
+    - functions
+    - deploy
+    - CalculateCovidDataIncrease
+    - --source=.
+    - --trigger-event=providers/cloud.firestore/eventTypes/document.write
+    - --trigger-resource=projects/${PROJECT_ID}/databases/(default)/documents/covidDataTotal/{date}
+    - --region=europe-west1
+    - --runtime=go113
+    - --memory=128
