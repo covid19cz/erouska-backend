@@ -60,3 +60,8 @@ func CalculateCovidDataIncrease(ctx context.Context, e coviddata.FirestoreEvent)
 
 	return coviddata.CalculateCovidDataIncrease(ctx, e)
 }
+
+// GetCovidData handler.
+func GetCovidData(w http.ResponseWriter, r *http.Request) {
+	coviddata.GetCovidData(w, r)
+}
