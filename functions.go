@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"context"
+
 	"github.com/covid19cz/erouska-backend/internal/functions/checkattemptsthresholds"
 	"github.com/covid19cz/erouska-backend/internal/functions/coviddata"
 	"github.com/covid19cz/erouska-backend/internal/functions/increaseehridattemptscount"
@@ -51,4 +53,10 @@ func ProvideVerificationCode(w http.ResponseWriter, r *http.Request) {
 // DownloadCovidDataTotal handler.
 func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 	coviddata.DownloadCovidDataTotal(w, r)
+}
+
+// CalculateCovidDataIncrease handler.
+func CalculateCovidDataIncrease(ctx context.Context, e coviddata.FirestoreEvent) error {
+
+	return coviddata.CalculateCovidDataIncrease(ctx, e)
 }
