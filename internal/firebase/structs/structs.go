@@ -7,6 +7,7 @@ type Registration struct {
 	Manufacturer              string `json:"manufacturer"`
 	Model                     string `json:"model"`
 	Locale                    string `json:"locale"`
+	PushRegistrationToken     string `json:"pushRegistrationToken"`
 	CreatedAt                 int64  `json:"createdAt"`
 	LastNotificationStatus    string `json:"lastNotificationStatus"`
 	LastNotificationUpdatedAt int64  `json:"lastNotificationUpdatedAt"`

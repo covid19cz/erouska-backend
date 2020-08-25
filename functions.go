@@ -3,6 +3,7 @@ package functions
 import (
 	"context"
 
+	"github.com/covid19cz/erouska-backend/internal/functions/changepushtoken"
 	"github.com/covid19cz/erouska-backend/internal/functions/checkattemptsthresholds"
 	"github.com/covid19cz/erouska-backend/internal/functions/coviddata"
 	"github.com/covid19cz/erouska-backend/internal/functions/increaseehridattemptscount"
@@ -23,6 +24,11 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 // IsEhridActive IsEhridActive handler.
 func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 	isehridactive.IsEhridActive(w, r)
+}
+
+// ChangePushToken ChangePushToken handler.
+func ChangePushToken(w http.ResponseWriter, r *http.Request) {
+	changepushtoken.ChangePushToken(w, r)
 }
 
 // IncreaseEhridAttemptsCount IncreaseEhridAttemptsCount handler.

@@ -22,11 +22,12 @@ import (
 const needsRetry = "needs_retry"
 
 type registrationRequest struct {
-	Platform        string `json:"platform" validate:"required,oneof=android ios"`
-	PlatformVersion string `json:"platformVersion" validate:"required"`
-	Manufacturer    string `json:"manufacturer" validate:"required"`
-	Model           string `json:"model" validate:"required"`
-	Locale          string `json:"locale" validate:"required"`
+	Platform              string `json:"platform" validate:"required,oneof=android ios"`
+	PlatformVersion       string `json:"platformVersion" validate:"required"`
+	Manufacturer          string `json:"manufacturer" validate:"required"`
+	Model                 string `json:"model" validate:"required"`
+	Locale                string `json:"locale" validate:"required"`
+	PushRegistrationToken string `json:"pushRegistrationToken" validate:"required"`
 }
 
 type registrationResponse struct {
@@ -48,12 +49,13 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	logger.Debugf("Handling registration request: %+v", request)
 
 	registration := structs.Registration{
-		Platform:        request.Platform,
-		PlatformVersion: request.PlatformVersion,
-		Manufacturer:    request.Manufacturer,
-		Model:           request.Model,
-		Locale:          request.Locale,
-		CreatedAt:       utils.GetTimeNow().Unix(),
+		Platform:              request.Platform,
+		PlatformVersion:       request.PlatformVersion,
+		Manufacturer:          request.Manufacturer,
+		Model:                 request.Model,
+		Locale:                request.Locale,
+		PushRegistrationToken: request.PushRegistrationToken,
+		CreatedAt:             utils.GetTimeNow().Unix(),
 	}
 
 	ehrid, err := register(ctx, client, utils.GenerateEHrid, registration)
