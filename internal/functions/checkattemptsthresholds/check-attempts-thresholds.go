@@ -11,7 +11,6 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
-	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -49,7 +48,7 @@ func CheckAttemptsThresholds(w http.ResponseWriter, r *http.Request) {
 	ehridNotifCount, err := getNotifsCount(ctx, client, constants.CollectionDailyNotificationAttemptsEhrid, request.Ehrid, date)
 	if err != nil {
 		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
-		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
+		httputils.SendErrorResponse(w, r, err)
 		return
 	}
 
