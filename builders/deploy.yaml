@@ -103,6 +103,7 @@ steps:
     - --region=europe-west1
     - --runtime=go113
     - --memory=128
+    - --service-account=download-covid-data-total@${PROJECT_ID}.iam.gserviceaccount.com
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -115,6 +116,7 @@ steps:
     - --region=europe-west1
     - --runtime=go113
     - --memory=128
+    - --service-account=calculate-covid-data-increase@${PROJECT_ID}.iam.gserviceaccount.com
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -127,3 +129,4 @@ steps:
     - --runtime=go113
     - --memory=128
     - --allow-unauthenticated
+    - --service-account=get-covid-data@${PROJECT_ID}.iam.gserviceaccount.com
