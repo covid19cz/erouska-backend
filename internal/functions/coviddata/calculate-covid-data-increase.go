@@ -68,7 +68,7 @@ func CalculateCovidDataIncrease(ctx context.Context, e FirestoreEvent) error {
 		return fmt.Errorf("Error converting firestore data: %v", err)
 	}
 
-	date := e.Value.Name // key is the date
+	date := todayFields.Date.StringValue
 
 	if date == "" {
 		date = utils.GetTimeNow().Format("20060102")
