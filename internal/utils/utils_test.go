@@ -15,13 +15,3 @@ func TestGenerateEHrid(t *testing.T) {
 		assert.True(t, match, "Failed: %v", ehrid)
 	}
 }
-
-func TestGenerateVerificationCode(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		var ehrid = GenerateVerificationCode()
-
-		match, err := regexp.MatchString(`[0-9]{8}`, ehrid)
-		assert.Nil(t, err, "Failed: %v", ehrid)
-		assert.True(t, match, "Failed: %v", ehrid)
-	}
-}

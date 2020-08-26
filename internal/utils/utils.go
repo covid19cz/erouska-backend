@@ -34,18 +34,6 @@ func GenerateEHrid() string {
 	return string(b)
 }
 
-//GenerateVerificationCode generates new VC
-func GenerateVerificationCode() string {
-	// NNNNNNNN, N = number [0-9]
-	b := make([]byte, 8)
-
-	for i := 0; i <= 7; i++ {
-		b[i] = byte(SeededRand.Intn(10) + 48)
-	}
-
-	return string(b)
-}
-
 // GetTimeNow Gets current time
 func GetTimeNow() *time.Time {
 	t := time.Now()
