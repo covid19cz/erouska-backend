@@ -1,14 +1,13 @@
 package firebase
 
 import (
-	"context"
-	"log"
-	"os"
-
 	"cloud.google.com/go/firestore"
+	"context"
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/db"
 	"github.com/covid19cz/erouska-backend/internal/constants"
+	"log"
+	"os"
 )
 
 //FirebaseDbClient -_-
@@ -21,9 +20,7 @@ func init() {
 	ctx := context.Background()
 
 	firebaseURL := constants.FirebaseURL
-
 	url, exists := os.LookupEnv("FIREBASE_URL")
-
 	if exists {
 		firebaseURL = url
 	}

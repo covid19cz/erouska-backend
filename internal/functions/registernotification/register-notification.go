@@ -3,6 +3,8 @@ package registernotification
 import (
 	"context"
 	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/pubsub"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	"net/http"
 
 	"cloud.google.com/go/firestore"
@@ -11,7 +13,6 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
-	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,11 +22,17 @@ type request struct {
 	Ehrid string `json:"ehrid" validate:"required"`
 }
 
+//AftermathPayload Struct holding aftermath input data.
+type AftermathPayload struct {
+	Ehrid string `json:"ehrid" validate:"required"`
+}
+
 //RegisterNotification Handler
 func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
 	client := store.Client{}
+	pubSubClient := pubsub.Client{}
 
 	var request request
 
@@ -64,6 +71,17 @@ func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 		return tx.Set(doc, registration)
 	})
 
+	if err != nil {
+		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
+		httputils.SendErrorResponse(w, r, err)
+		return
+	}
+
+	aftermathPayload := AftermathPayload(request)
+
+	topicName := constants.TopicRegisterNotification
+	logger.Debugf("Publishing event to %v: %+v", topicName, aftermathPayload)
+	err = pubSubClient.Publish(topicName, aftermathPayload)
 	if err != nil {
 		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
 		httputils.SendErrorResponse(w, r, err)
