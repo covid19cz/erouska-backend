@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	rpccode "google.golang.org/genproto/googleapis/rpc/code"
-
 	"cloud.google.com/go/firestore"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
@@ -142,7 +140,7 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
-		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
+		httputils.SendErrorResponse(w, r, err)
 		return
 	}
 

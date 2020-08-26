@@ -3,6 +3,7 @@ package coviddata
 import (
 	"context"
 	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -75,14 +76,17 @@ func CalculateCovidDataIncrease(ctx context.Context, e FirestoreEvent) error {
 	}
 
 	t, err := time.Parse("20060102", date)
+	if err != nil {
+		return fmt.Errorf("Error while parsing date: %v", err)
+	}
 
 	yesterdayDate := t.AddDate(0, 0, -1).Format("20060102")
 
 	snap, err := client.Doc(constants.CollectionCovidDataTotal, yesterdayDate).Get(ctx)
 
 	if err != nil {
-		if status.Code(err) != codes.NotFound {
-			return fmt.Errorf("NotFound error while querying Firestore: %v", err)
+		if status.Code(err) == codes.NotFound {
+			return &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", yesterdayDate)}
 		}
 
 		return fmt.Errorf("Error while querying Firestore: %v", err)

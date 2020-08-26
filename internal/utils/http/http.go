@@ -18,7 +18,7 @@ import (
 
 // DecodeJSONBody Decode request body from JSON to struct
 // copied from https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body
-func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) errors.ErouskaError {
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {
@@ -78,7 +78,7 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 			return &errors.MalformedRequestError{Status: rpccode.Code_INVALID_ARGUMENT, Msg: msg}
 
 		default:
-			return err
+			return &errors.UnknownError{Msg: err.Error()}
 		}
 	}
 
@@ -99,18 +99,9 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 
 //DecodeJSONOrReportError Decodes request JSON and writes possible errors to the ResponseWriter. Return bool - if the request was decoded successfully.
 func DecodeJSONOrReportError(w http.ResponseWriter, r *http.Request, dst interface{}) bool {
-	var ctx = r.Context()
-	logger := logging.FromContext(ctx)
-
 	err := DecodeJSONBody(w, r, dst)
 	if err != nil {
-		var mr *errors.MalformedRequestError
-		if ers.As(err, &mr) {
-			SendErrorResponse(w, r, mr.Status, mr.Msg)
-		} else {
-			logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
-			SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
-		}
+		SendErrorResponse(w, r, err)
 		return false
 	}
 
@@ -160,7 +151,21 @@ func SendEmptyResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 //SendErrorResponse Sends error response as required by Firebase SDK.
-func SendErrorResponse(w http.ResponseWriter, r *http.Request, error rpccode.Code, message string) {
+func SendErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	logger := logging.FromContext(r.Context())
+
+	var mr, ok = err.(errors.ErouskaError)
+
+	if ok {
+		sendErrorResponse(w, r, mr.Code(), mr.Error())
+		return
+	}
+
+	logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
+	sendErrorResponse(w, r, rpccode.Code_INTERNAL, err.Error())
+}
+
+func sendErrorResponse(w http.ResponseWriter, r *http.Request, error rpccode.Code, message string) {
 	logger := logging.FromContext(r.Context())
 
 	errorCode := rpccode.Code_value[error.String()]

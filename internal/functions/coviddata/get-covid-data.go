@@ -2,6 +2,7 @@ package coviddata
 
 import (
 	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	"net/http"
 
 	"github.com/covid19cz/erouska-backend/internal/constants"
@@ -55,8 +56,8 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) error {
 	snap, err := client.Doc(constants.CollectionCovidDataTotal, date).Get(ctx)
 
 	if err != nil {
-		if status.Code(err) != codes.NotFound {
-			return fmt.Errorf("NotFound error while querying Firestore: %v", err)
+		if status.Code(err) == codes.NotFound {
+			return &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
 		}
 
 		return fmt.Errorf("Error while querying Firestore: %v", err)
@@ -75,8 +76,8 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) error {
 	snap, err = client.Doc(constants.CollectionCovidDataIncrease, date).Get(ctx)
 
 	if err != nil {
-		if status.Code(err) != codes.NotFound {
-			return fmt.Errorf("NotFound error while querying Firestore: %v", err)
+		if status.Code(err) == codes.NotFound {
+			return &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
 		}
 
 		return fmt.Errorf("Error while querying Firestore: %v", err)
