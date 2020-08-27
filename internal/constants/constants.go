@@ -4,7 +4,7 @@ package constants
 const FirebaseURL = "https://erouska-key-server-dev.firebaseio.com/"
 
 //CollectionRegistrations Name of the collection.
-const CollectionRegistrations = "registrations"
+const CollectionRegistrations = "registrations_v2"
 
 //CollectionDailyNotificationAttemptsEhrid Name of the collection.
 const CollectionDailyNotificationAttemptsEhrid = "dailyNotificationAttemptsEhrid"
