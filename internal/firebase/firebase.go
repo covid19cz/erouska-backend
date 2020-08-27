@@ -4,6 +4,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"context"
 	firebase "firebase.google.com/go"
+	"firebase.google.com/go/auth"
 	"firebase.google.com/go/db"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"log"
@@ -15,6 +16,9 @@ var FirebaseDbClient *db.Client
 
 //FirestoreClient -_-
 var FirestoreClient *firestore.Client
+
+//FirebaseAuth -_-
+var FirebaseAuth *auth.Client
 
 func init() {
 	ctx := context.Background()
@@ -46,4 +50,9 @@ func init() {
 	if err != nil {
 		log.Fatalf("app.Firestore: %v", err)
 	}
+	FirebaseAuth, err = app.Auth(ctx)
+	if err != nil {
+		log.Fatalf("error getting Auth client: %v\n", err)
+	}
+
 }
