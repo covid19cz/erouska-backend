@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"net/http"
 
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
+
 	"cloud.google.com/go/firestore"
 	"github.com/avast/retry-go"
+	"github.com/covid19cz/erouska-backend/internal/auth"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
@@ -30,14 +33,15 @@ type registrationRequest struct {
 }
 
 type registrationResponse struct {
-	Ehrid string `json:"ehrid"`
+	CustomToken string `json:"customToken"`
 }
 
 //RegisterEhrid Register new user.
 func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
-	client := store.Client{}
+	storeClient := store.Client{}
+	authClient := auth.Client{}
 
 	var request registrationRequest
 
@@ -57,14 +61,22 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:             utils.GetTimeNow().Unix(),
 	}
 
-	ehrid, err := register(ctx, client, utils.GenerateEHrid, registration)
+	ehrid, err := register(ctx, storeClient, utils.GenerateEHrid, registration)
 	if err != nil {
 		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
 		httputils.SendErrorResponse(w, r, err)
 		return
 	}
 
-	response := registrationResponse{ehrid}
+	customToken, err := authClient.CustomToken(ctx, ehrid)
+	if err != nil {
+		logger.Fatalf("error minting custom token: %v\n", err.Error())
+		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
+	}
+
+	logger.Debugf("Got custom token: %v\n", customToken)
+
+	response := registrationResponse{customToken}
 
 	httputils.SendResponse(w, r, response)
 }
