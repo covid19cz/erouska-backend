@@ -7,7 +7,7 @@ const ProjectID = "erouska-key-server-dev"
 const FirebaseURL = "https://" + ProjectID + ".firebaseio.com/"
 
 //CollectionRegistrations Name of the collection.
-const CollectionRegistrations = "registrations"
+const CollectionRegistrations = "registrations_v2"
 
 //CollectionDailyNotificationAttemptsEhrid Name of the collection.
 const CollectionDailyNotificationAttemptsEhrid = "dailyNotificationAttemptsEhrid"
