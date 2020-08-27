@@ -37,10 +37,10 @@ type response struct {
 	CurrentlyHospitalizedTotal    int    `json:"currentlyHospitalizedTotal"  validate:"required"`
 }
 
-func fetchTotals(ctx context.Context, client store.Client, date string) (*TotalsData, error) {
+func fetchGeneric(ctx context.Context, client store.Client, col string, date string) (interface{}, error) {
 	logger := logging.FromContext(ctx)
 
-	snap, err := client.Doc(constants.CollectionCovidDataTotal, date).Get(ctx)
+	snap, err := client.Doc(col, date).Get(ctx)
 
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
@@ -52,41 +52,33 @@ func fetchTotals(ctx context.Context, client store.Client, date string) (*Totals
 
 	logger.Infof("fetched firestore data: %+v", snap.Data())
 
-	var totals TotalsData
+	var data interface{}
 
-	if err := snap.DataTo(&totals); err != nil {
+	if err := snap.DataTo(&data); err != nil {
 		panic(fmt.Sprintf("could not parse input: %s", err))
 	}
 
-	logger.Infof("fetched data: %+v", totals)
+	logger.Infof("fetched data: %+v", data)
 
-	return &totals, nil
+	return &data, nil
 }
 
-func fetchIncrease(ctx context.Context, client store.Client, date string) (*IncreaseData, error) {
+func fetchCovidData(ctx context.Context, client store.Client, date string) (*TotalsData, *IncreaseData, error) {
 	logger := logging.FromContext(ctx)
 
-	snap, err := client.Doc(constants.CollectionCovidDataIncrease, date).Get(ctx)
-
+	totalsData, err := fetchGeneric(ctx, client, constants.CollectionCovidDataTotal, date)
 	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return nil, &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
-		}
-
-		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
+		logger.Errorf("Error fetching totalsData from firestore: %v", err)
+		return nil, nil, err
 	}
 
-	logger.Infof("fetched firestore data: %+v", snap.Data())
-
-	var increase IncreaseData
-
-	if err := snap.DataTo(&increase); err != nil {
-		panic(fmt.Sprintf("could not parse input: %s", err))
+	increaseData, err := fetchGeneric(ctx, client, constants.CollectionCovidDataIncrease, date)
+	if err != nil {
+		logger.Errorf("Error fetching increaseData from firestore: %v", err)
+		return nil, nil, err
 	}
 
-	logger.Infof("fetched data: %+v", increase)
-
-	return &increase, nil
+	return totalsData.(*TotalsData), increaseData.(*IncreaseData), nil
 }
 
 // GetCovidData handler.
@@ -116,16 +108,7 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 
 	failed := false
 
-	totalsData, err := fetchTotals(ctx, client, date)
-	if err != nil {
-		logger.Errorf("Error fetching data from firestore: %v", err)
-		failed = true
-		if !shouldFallback {
-			httputils.SendErrorResponse(w, r, err)
-			return
-		}
-	}
-	increaseData, err := fetchIncrease(ctx, client, date)
+	totalsData, increaseData, err := fetchCovidData(ctx, client, date)
 	if err != nil {
 		logger.Errorf("Error fetching data from firestore: %v", err)
 		failed = true
@@ -140,17 +123,14 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		t, _ := time.Parse("20060102", date)
 		date = t.AddDate(0, 0, -1).Format("20060102")
 
-		totalsData, err = fetchTotals(ctx, client, date)
+		totalsData, increaseData, err = fetchCovidData(ctx, client, date)
 		if err != nil {
 			logger.Errorf("Error refetching data from firestore: %v", err)
-			httputils.SendErrorResponse(w, r, err)
-			return
-		}
-		increaseData, err = fetchIncrease(ctx, client, date)
-		if err != nil {
-			logger.Errorf("Error refetching data from firestore: %v", err)
-			httputils.SendErrorResponse(w, r, err)
-			return
+			failed = true
+			if !shouldFallback {
+				httputils.SendErrorResponse(w, r, err)
+				return
+			}
 		}
 	}
 
