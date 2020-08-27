@@ -1,9 +1,12 @@
 package coviddata
 
 import (
+	"context"
 	"fmt"
-	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	"net/http"
+	"time"
+
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
@@ -34,36 +37,20 @@ type response struct {
 	CurrentlyHospitalizedTotal    int    `json:"currentlyHospitalizedTotal"  validate:"required"`
 }
 
-// GetCovidData handler.
-func GetCovidData(w http.ResponseWriter, r *http.Request) error {
-
-	var ctx = r.Context()
+func fetchTotals(ctx context.Context, client store.Client, date string) (*TotalsData, error) {
 	logger := logging.FromContext(ctx)
-	client := store.Client{}
-
-	var req getRequest
-
-	if !httputils.DecodeJSONOrReportError(w, r, &req) {
-		return nil
-	}
-
-	date := req.Date
-
-	if date == "" {
-		date = utils.GetTimeNow().Format("20060102")
-	}
 
 	snap, err := client.Doc(constants.CollectionCovidDataTotal, date).Get(ctx)
 
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
+			return nil, &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
 		}
 
-		return fmt.Errorf("Error while querying Firestore: %v", err)
+		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
 	}
 
-	logger.Infof("fetched firestore event: %+v", snap.Data())
+	logger.Infof("fetched firestore data: %+v", snap.Data())
 
 	var totals TotalsData
 
@@ -73,17 +60,23 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) error {
 
 	logger.Infof("fetched data: %+v", totals)
 
-	snap, err = client.Doc(constants.CollectionCovidDataIncrease, date).Get(ctx)
+	return &totals, nil
+}
+
+func fetchIncrease(ctx context.Context, client store.Client, date string) (*IncreaseData, error) {
+	logger := logging.FromContext(ctx)
+
+	snap, err := client.Doc(constants.CollectionCovidDataIncrease, date).Get(ctx)
 
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
+			return nil, &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
 		}
 
-		return fmt.Errorf("Error while querying Firestore: %v", err)
+		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
 	}
 
-	logger.Infof("fetched firestore event: %+v", snap.Data())
+	logger.Infof("fetched firestore data: %+v", snap.Data())
 
 	var increase IncreaseData
 
@@ -93,13 +86,73 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) error {
 
 	logger.Infof("fetched data: %+v", increase)
 
-	totalsData := totals
+	return &increase, nil
+}
 
-	if err != nil {
-		panic(fmt.Sprintf("could not convert firestore fields to data: %s", err))
+// GetCovidData handler.
+func GetCovidData(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+	logger := logging.FromContext(ctx)
+	client := store.Client{}
+
+	var req getRequest
+
+	if !httputils.DecodeJSONOrReportError(w, r, &req) {
+		return
 	}
 
-	increaseData := increase
+	date := req.Date
+
+	// if no date was specified in input
+	// and there is no data for today, try to get
+	// data for yesterday
+	shouldFallback := false
+
+	if date == "" {
+		date = utils.GetTimeNow().Format("20060102")
+		shouldFallback = true
+	}
+
+	failed := false
+
+	totalsData, err := fetchTotals(ctx, client, date)
+	if err != nil {
+		logger.Errorf("Error fetching data from firestore: %v", err)
+		failed = true
+		if !shouldFallback {
+			httputils.SendErrorResponse(w, r, err)
+			return
+		}
+	}
+	increaseData, err := fetchIncrease(ctx, client, date)
+	if err != nil {
+		logger.Errorf("Error fetching data from firestore: %v", err)
+		failed = true
+		if !shouldFallback {
+			httputils.SendErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	if failed && shouldFallback {
+		// we try to fetch data from yesterday
+		t, _ := time.Parse("20060102", date)
+		date = t.AddDate(0, 0, -1).Format("20060102")
+
+		totalsData, err = fetchTotals(ctx, client, date)
+		if err != nil {
+			logger.Errorf("Error refetching data from firestore: %v", err)
+			httputils.SendErrorResponse(w, r, err)
+			return
+		}
+		increaseData, err = fetchIncrease(ctx, client, date)
+		if err != nil {
+			logger.Errorf("Error refetching data from firestore: %v", err)
+			httputils.SendErrorResponse(w, r, err)
+			return
+		}
+	}
 
 	res := response{
 		Date:                          date,
@@ -119,5 +172,5 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) error {
 
 	httputils.SendResponse(w, r, res)
 
-	return nil
+	return
 }
