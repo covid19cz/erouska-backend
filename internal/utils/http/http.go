@@ -10,11 +10,15 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	"github.com/golang/gddo/httputil/header"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
-	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"io"
 	"net/http"
 	"strings"
 )
+
+type errorResponse struct {
+	Status  int32  `json:"status,omitempty"`
+	Message string `json:"message,omitempty"`
+}
 
 // DecodeJSONBody Decode request body from JSON to struct
 // copied from https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body
@@ -170,8 +174,8 @@ func sendErrorResponse(w http.ResponseWriter, r *http.Request, error rpccode.Cod
 
 	errorCode := rpccode.Code_value[error.String()]
 
-	status := rpcstatus.Status{
-		Code:    errorCode,
+	status := errorResponse{
+		Status:  errorCode,
 		Message: message,
 	}
 
