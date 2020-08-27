@@ -26,7 +26,7 @@ type registrationRequest struct {
 	Manufacturer          string `json:"manufacturer" validate:"required"`
 	Model                 string `json:"model" validate:"required"`
 	Locale                string `json:"locale" validate:"required"`
-	PushRegistrationToken string `json:"pushRegistrationToken" validate:"required"`
+	PushRegistrationToken string `json:"pushRegistrationToken"`
 }
 
 type registrationResponse struct {
