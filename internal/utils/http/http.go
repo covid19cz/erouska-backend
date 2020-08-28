@@ -23,12 +23,10 @@ type errorResponse struct {
 // DecodeJSONBody Decode request body from JSON to struct
 // copied from https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body
 func DecodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) errors.ErouskaError {
-	if r.Header.Get("Content-Type") != "" {
-		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-		if value != "application/json" {
-			msg := "Content-Type header is not application/json"
-			return &errors.MalformedRequestError{Status: http.StatusUnsupportedMediaType, Msg: msg}
-		}
+	value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
+	if value != "application/json" {
+		msg := "Content-Type header is not application/json"
+		return &errors.MalformedRequestError{Status: http.StatusUnsupportedMediaType, Msg: msg}
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
