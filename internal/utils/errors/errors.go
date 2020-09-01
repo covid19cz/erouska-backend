@@ -46,7 +46,7 @@ func (mr *MalformedRequestError) Code() rpccode.Code {
 	return rpccode.Code_INVALID_ARGUMENT
 }
 
-//NotFoundError Error for malformed request
+//NotFoundError Error for not found
 type NotFoundError struct {
 	Msg string
 }
@@ -58,4 +58,18 @@ func (mr *NotFoundError) Error() string {
 //Code Code of the error.
 func (mr *NotFoundError) Code() rpccode.Code {
 	return rpccode.Code_NOT_FOUND
+}
+
+//UnauthenticatedError Error for unauthenticated
+type UnauthenticatedError struct {
+	Msg string
+}
+
+func (mr *UnauthenticatedError) Error() string {
+	return mr.Msg
+}
+
+//Code Code of the error.
+func (mr *UnauthenticatedError) Code() rpccode.Code {
+	return rpccode.Code_UNAUTHENTICATED
 }

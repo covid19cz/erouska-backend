@@ -1,9 +1,11 @@
 package isehridactive
 
 import (
+	"github.com/covid19cz/erouska-backend/internal/auth"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -11,7 +13,7 @@ import (
 )
 
 type queryRequest struct {
-	Ehrid string `json:"ehrid" validate:"required"`
+	IDToken string `json:"idToken" validate:"required"`
 }
 
 type queryResponse struct {
@@ -22,7 +24,8 @@ type queryResponse struct {
 func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
-	client := store.Client{}
+	storeClient := store.Client{}
+	authClient := auth.Client{}
 
 	var request queryRequest
 
@@ -30,9 +33,16 @@ func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Debugf("Handling isEhridActive request: %+v", request)
+	ehrid, err := authClient.AuthenticateToken(ctx, request.IDToken)
+	if err != nil {
+		logger.Debugf("Unverifiable token provided: %+v %+v", request.IDToken, err.Error())
+		httputils.SendErrorResponse(w, r, &errors.UnauthenticatedError{Msg: "Invalid token"})
+		return
+	}
 
-	_, err := client.Doc(constants.CollectionRegistrations, request.Ehrid).Get(ctx)
+	logger.Debugf("Handling isEhridActive request: %v %+v", ehrid, request)
+
+	_, err = storeClient.Doc(constants.CollectionRegistrations, ehrid).Get(ctx)
 
 	var active bool
 
