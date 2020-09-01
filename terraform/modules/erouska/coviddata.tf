@@ -22,7 +22,8 @@ locals {
 }
 
 data "google_cloudfunctions_function" "downloadcovid" {
-  name = "DownloadCovidDataTotal"
+  name    = "DownloadCovidDataTotal"
+  project = var.project
 }
 
 resource "google_service_account" "downloadcovid-invoker" {
@@ -36,6 +37,8 @@ resource "google_project_iam_member" "downloadcovid-invoker" {
   member = "serviceAccount:${google_service_account.downloadcovid-invoker.email}"
 }
 
+# cloudscheduler region has to be the same as appengine region...
+# it might happen that we have scheduler calling function in different region
 resource "google_cloud_scheduler_job" "downloadcovid-worker" {
   name             = "downloadcovid-worker"
   region           = var.cloudscheduler_location
