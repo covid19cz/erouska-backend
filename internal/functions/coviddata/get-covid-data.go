@@ -6,19 +6,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/covid19cz/erouska-backend/internal/utils/errors"
-
+	"github.com/covid19cz/erouska-backend/internal/auth"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type getRequest struct {
-	Date string `json:"date"`
+	IDToken string `json:"idToken" validate:"required"`
+	Date    string `json:"date"`
 }
 
 type response struct {
@@ -91,16 +92,25 @@ func fetchIncrease(ctx context.Context, client store.Client, date string) (*Incr
 
 // GetCovidData handler.
 func GetCovidData(w http.ResponseWriter, r *http.Request) {
-
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
-	client := store.Client{}
+	storeClient := store.Client{}
+	authClient := auth.Client{}
 
 	var req getRequest
 
 	if !httputils.DecodeJSONOrReportError(w, r, &req) {
 		return
 	}
+
+	ehrid, err := authClient.AuthenticateToken(ctx, req.IDToken)
+	if err != nil {
+		logger.Debugf("Unverifiable token provided: %+v %+v", req.IDToken, err.Error())
+		httputils.SendErrorResponse(w, r, &errors.UnauthenticatedError{Msg: "Invalid token"})
+		return
+	}
+
+	logger.Debugf("Handling GetCovidData request: %v %+v", ehrid, req)
 
 	date := req.Date
 
@@ -116,7 +126,7 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 
 	failed := false
 
-	totalsData, err := fetchTotals(ctx, client, date)
+	totalsData, err := fetchTotals(ctx, storeClient, date)
 	if err != nil {
 		logger.Errorf("Error fetching data from firestore: %v", err)
 		failed = true
@@ -125,7 +135,7 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	increaseData, err := fetchIncrease(ctx, client, date)
+	increaseData, err := fetchIncrease(ctx, storeClient, date)
 	if err != nil {
 		logger.Errorf("Error fetching data from firestore: %v", err)
 		failed = true
@@ -140,13 +150,13 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		t, _ := time.Parse("20060102", date)
 		date = t.AddDate(0, 0, -1).Format("20060102")
 
-		totalsData, err = fetchTotals(ctx, client, date)
+		totalsData, err = fetchTotals(ctx, storeClient, date)
 		if err != nil {
 			logger.Errorf("Error refetching data from firestore: %v", err)
 			httputils.SendErrorResponse(w, r, err)
 			return
 		}
-		increaseData, err = fetchIncrease(ctx, client, date)
+		increaseData, err = fetchIncrease(ctx, storeClient, date)
 		if err != nil {
 			logger.Errorf("Error refetching data from firestore: %v", err)
 			httputils.SendErrorResponse(w, r, err)

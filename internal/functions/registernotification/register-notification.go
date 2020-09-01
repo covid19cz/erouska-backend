@@ -1,25 +1,26 @@
 package registernotification
 
 import (
+	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
-	"github.com/covid19cz/erouska-backend/internal/pubsub"
-	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	"net/http"
 
-	"cloud.google.com/go/firestore"
+	"github.com/covid19cz/erouska-backend/internal/auth"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/pubsub"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
+	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type request struct {
-	Ehrid string `json:"ehrid" validate:"required"`
+	IDToken string `json:"idToken" validate:"required"`
 }
 
 //AftermathPayload Struct holding aftermath input data.
@@ -31,7 +32,8 @@ type AftermathPayload struct {
 func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
-	client := store.Client{}
+	storeClient := store.Client{}
+	authClient := auth.Client{}
 	pubSubClient := pubsub.Client{}
 
 	var request request
@@ -40,11 +42,18 @@ func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Debugf("Handling RegisterNotification request: %+v", request)
+	ehrid, err := authClient.AuthenticateToken(ctx, request.IDToken)
+	if err != nil {
+		logger.Debugf("Unverifiable token provided: %+v %+v", request.IDToken, err.Error())
+		httputils.SendErrorResponse(w, r, &errors.UnauthenticatedError{Msg: "Invalid token"})
+		return
+	}
 
-	doc := client.Doc(constants.CollectionRegistrations, request.Ehrid)
+	logger.Debugf("Handling RegisterNotification request: %v %+v", ehrid, request)
 
-	err := client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+	doc := storeClient.Doc(constants.CollectionRegistrations, ehrid)
+
+	err = storeClient.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		rec, err := tx.Get(doc)
 
 		if err != nil {
@@ -53,7 +62,7 @@ func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 			}
 			// not found:
 
-			return &errors.NotFoundError{Msg: fmt.Sprintf("Could not find registration for %v: %v", request.Ehrid, err)}
+			return &errors.NotFoundError{Msg: fmt.Sprintf("Could not find registration for %v: %v", ehrid, err)}
 		}
 
 		var registration structs.Registration
@@ -77,7 +86,7 @@ func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	aftermathPayload := AftermathPayload(request)
+	aftermathPayload := AftermathPayload{Ehrid: ehrid}
 
 	topicName := constants.TopicRegisterNotification
 	logger.Debugf("Publishing event to %v: %+v", topicName, aftermathPayload)
