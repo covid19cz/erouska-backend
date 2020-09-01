@@ -1,13 +1,11 @@
 package registerehrid
 
 import (
+	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
 	"net/http"
 
-	rpccode "google.golang.org/genproto/googleapis/rpc/code"
-
-	"cloud.google.com/go/firestore"
 	"github.com/avast/retry-go"
 	"github.com/covid19cz/erouska-backend/internal/auth"
 	"github.com/covid19cz/erouska-backend/internal/constants"
@@ -71,7 +69,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	customToken, err := authClient.CustomToken(ctx, ehrid)
 	if err != nil {
 		logger.Fatalf("error minting custom token: %v\n", err.Error())
-		httputils.SendErrorResponse(w, r, rpccode.Code_INTERNAL, "Unknown error")
+		httputils.SendErrorResponse(w, r, &errors.UnknownError{Msg: "ahoj"})
 	}
 
 	logger.Debugf("Got custom token: %v\n", customToken)
