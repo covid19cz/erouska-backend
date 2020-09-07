@@ -13,30 +13,10 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type getRequest struct {
-	IDToken string `json:"idToken" validate:"required"`
-	Date    string `json:"date"`
-}
-
-type response struct {
-	Date                          string `json:"date"`
-	TestsIncrease                 int    `json:"testsIncrease"  validate:"required"`
-	ConfirmedCasesIncrease        int    `json:"confirmedCasesIncrease"  validate:"required"`
-	ActiveCasesIncrease           int    `json:"activeCasesIncrease"  validate:"required"`
-	CuredIncrease                 int    `json:"curedIncrease"  validate:"required"`
-	DeceasedIncrease              int    `json:"deceasedIncrease"  validate:"required"`
-	CurrentlyHospitalizedIncrease int    `json:"currentlyHospitalizedIncrease"  validate:"required"`
-	TestsTotal                    int    `json:"testsTotal"  validate:"required"`
-	ConfirmedCasesTotal           int    `json:"confirmedCasesTotal"  validate:"required"`
-	ActiveCasesTotal              int    `json:"activeCasesTotal"  validate:"required"`
-	CuredTotal                    int    `json:"curedTotal"  validate:"required"`
-	DeceasedTotal                 int    `json:"deceasedTotal"  validate:"required"`
-	CurrentlyHospitalizedTotal    int    `json:"currentlyHospitalizedTotal"  validate:"required"`
-}
 
 func fetchTotals(ctx context.Context, client store.Client, date string) (*TotalsData, error) {
 	logger := logging.FromContext(ctx)
@@ -97,7 +77,7 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	storeClient := store.Client{}
 	authClient := auth.Client{}
 
-	var req getRequest
+	var req v1.GetCovidDataRequest
 
 	if !httputils.DecodeJSONOrReportError(w, r, &req) {
 		return
@@ -164,7 +144,7 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	res := response{
+	res := v1.GetCovidDataResponse{
 		Date:                          date,
 		TestsIncrease:                 increaseData.TestsIncrease,
 		TestsTotal:                    totalsData.TestsTotal,
@@ -181,6 +161,4 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputils.SendResponse(w, r, res)
-
-	return
 }
