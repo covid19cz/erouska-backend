@@ -7,18 +7,11 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
 )
-
-type queryRequest struct {
-	IDToken string `json:"idToken" validate:"required"`
-}
-
-type queryResponse struct {
-	Active bool `json:"active"`
-}
 
 //IsEhridActive Queries if specified eHrid is active
 func IsEhridActive(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +20,7 @@ func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 	storeClient := store.Client{}
 	authClient := auth.Client{}
 
-	var request queryRequest
+	var request v1.IsEhridActiveRequest
 
 	if !httputils.DecodeJSONOrReportError(w, r, &request) {
 		return
@@ -58,7 +51,7 @@ func IsEhridActive(w http.ResponseWriter, r *http.Request) {
 		active = true
 	}
 
-	response := queryResponse{Active: active}
+	response := v1.IsEhridActiveResponse{Active: active}
 
 	httputils.SendResponse(w, r, response)
 }
