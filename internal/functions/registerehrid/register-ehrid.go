@@ -15,24 +15,12 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 const needsRetry = "needs_retry"
-
-type registrationRequest struct {
-	Platform              string `json:"platform" validate:"required,oneof=android ios"`
-	PlatformVersion       string `json:"platformVersion" validate:"required"`
-	Manufacturer          string `json:"manufacturer" validate:"required"`
-	Model                 string `json:"model" validate:"required"`
-	Locale                string `json:"locale" validate:"required"`
-	PushRegistrationToken string `json:"pushRegistrationToken"`
-}
-
-type registrationResponse struct {
-	CustomToken string `json:"customToken"`
-}
 
 //RegisterEhrid Register new user.
 func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +29,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	storeClient := store.Client{}
 	authClient := auth.Client{}
 
-	var request registrationRequest
+	var request v1.RegisterEhridRequest
 
 	if !httputils.DecodeJSONOrReportError(w, r, &request) {
 		return
@@ -74,7 +62,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debugf("Got custom token: %v\n", customToken)
 
-	response := registrationResponse{customToken}
+	response := v1.RegisterEhridResponse{CustomToken: customToken}
 
 	httputils.SendResponse(w, r, response)
 }

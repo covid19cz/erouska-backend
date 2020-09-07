@@ -13,14 +13,10 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type request struct {
-	IDToken               string `json:"idToken" validate:"required"`
-	PushRegistrationToken string `json:"pushRegistrationToken" validate:"required"`
-}
 
 //ChangePushToken Handler
 func ChangePushToken(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +25,7 @@ func ChangePushToken(w http.ResponseWriter, r *http.Request) {
 	storeClient := store.Client{}
 	authClient := auth.Client{}
 
-	var request request
+	var request v1.ChangePushTokenRequest
 
 	if !httputils.DecodeJSONOrReportError(w, r, &request) {
 		return
