@@ -15,13 +15,10 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type request struct {
-	IDToken string `json:"idToken" validate:"required"`
-}
 
 //AftermathPayload Struct holding aftermath input data.
 type AftermathPayload struct {
@@ -36,7 +33,7 @@ func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 	authClient := auth.Client{}
 	pubSubClient := pubsub.Client{}
 
-	var request request
+	var request v1.RegisterNotificationRequest
 
 	if !httputils.DecodeJSONOrReportError(w, r, &request) {
 		return
