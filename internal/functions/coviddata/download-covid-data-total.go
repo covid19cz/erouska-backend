@@ -22,9 +22,22 @@ import (
 )
 
 type downloadRequest struct {
-	Modified string       `json:"modified"`
-	Source   string       `json:"source"`
-	Data     []TotalsData `json:"data"`
+	Modified string    `json:"modified"`
+	Source   string    `json:"source"`
+	Data     []RawData `json:"data"`
+}
+
+//RawData holds all the info from source json
+type RawData struct {
+	Date                       string `json:"datum" validate:"required"`
+	TestsTotal                 int    `json:"provedene_testy_celkem"  validate:"required"`
+	ConfirmedCasesTotal        int    `json:"potvrzene_pripady_celkem"  validate:"required"`
+	ActiveCasesTotal           int    `json:"aktivni_pripady"  validate:"required"`
+	CuredTotal                 int    `json:"vyleceni"  validate:"required"`
+	DeceasedTotal              int    `json:"umrti"  validate:"required"`
+	CurrentlyHospitalizedTotal int    `json:"aktualne_hospitalizovani"  validate:"required"`
+	TestsIncrease              int    `json:"provedene_testy_vcerejsi_den" validate:"required"`
+	ConfirmedCasesIncrease     int    `json:"potvrzene_pripady_vcerejsi_den" validate:"required"`
 }
 
 // TotalsData holds all the info about tests, cases and results
@@ -49,12 +62,19 @@ type TotalsDataFields struct {
 	CurrentlyHospitalizedTotal structs.IntegerValue `json:"currentlyHospitalizedTotal"  validate:"required"`
 }
 
+//IncreaseData holds info about tests increases and cases increase
+type IncreaseData struct {
+	Date                   string `json:"datum" validate:"required"`
+	TestsIncrease          int    `json:"provedene_testy_vcerejsi_den" validate:"required"`
+	ConfirmedCasesIncrease int    `json:"potvrzene_pripady_vcerejsi_den" validate:"required"`
+}
+
 // HTTPClient interface for mocking fetchData
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func fetchData(client HTTPClient) (*TotalsData, error) {
+func fetchData(client HTTPClient) (*RawData, error) {
 
 	var ctx = context.Background()
 	logger := logging.FromContext(ctx)
@@ -105,6 +125,26 @@ func fetchData(client HTTPClient) (*TotalsData, error) {
 	return &data, nil
 }
 
+func getIncreaseData(data RawData) IncreaseData {
+	return IncreaseData{
+		Date:                   data.Date,
+		TestsIncrease:          data.TestsIncrease,
+		ConfirmedCasesIncrease: data.ConfirmedCasesIncrease,
+	}
+}
+
+func getTotalData(data RawData) TotalsData {
+	return TotalsData{
+		Date:                       data.Date,
+		TestsTotal:                 data.TestsIncrease,
+		ConfirmedCasesTotal:        data.ConfirmedCasesTotal,
+		ActiveCasesTotal:           data.ActiveCasesTotal,
+		CuredTotal:                 data.CuredTotal,
+		DeceasedTotal:              data.DeceasedTotal,
+		CurrentlyHospitalizedTotal: data.CurrentlyHospitalizedTotal,
+	}
+}
+
 // DownloadCovidDataTotal downloads coviddata json and writes it to firestore
 func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 
@@ -133,7 +173,7 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("Error while querying Firestore: %v", err)
 			}
 
-			return tx.Set(doc, *d)
+			return tx.Set(doc, getTotalData(*d))
 		}
 		return nil
 	})
@@ -144,7 +184,29 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Infof("Succesfully written data to firestore: %+v", d)
+	logger.Infof("Succesfully written totals data to firestore: %+v", d)
+
+	doc = client.Doc(constants.CollectionCovidDataIncrease, date)
+
+	err = client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		_, err := tx.Get(doc)
+		if err != nil {
+			if status.Code(err) != codes.NotFound {
+				return fmt.Errorf("Error while quering Firebase: %v", err)
+			}
+
+			return tx.Set(doc, getIncreaseData(*d))
+		}
+		return nil
+	})
+
+	if err != nil {
+		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
+		httputils.SendErrorResponse(w, r, err)
+		return
+	}
+
+	logger.Infof("Succesfully written increase data to firestore: %+v", d)
 
 	httputils.SendResponse(w, r, struct{ status string }{status: "OK"})
 }

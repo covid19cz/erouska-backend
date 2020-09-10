@@ -2,11 +2,10 @@ package coviddata
 
 import (
 	"bytes"
+	"github.com/google/go-cmp/cmp"
 	"io/ioutil"
 	"net/http"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 type ClientMock struct {
@@ -26,7 +25,10 @@ func (c *ClientMock) Do(req *http.Request) (*http.Response, error) {
             "aktivni_pripady": 4934,
             "vyleceni": 15148,
             "umrti": 401,
-            "aktualne_hospitalizovani": 122
+            "aktualne_hospitalizovani": 122,
+            "provedene_testy_vcerejsi_den": 15401,
+            "potvrzene_pripady_vcerejsi_den": 1163,
+            "potvrzene_pripady_dnesni_den": 701
         }
     ]
 }
@@ -42,10 +44,10 @@ func TestFetchData(t *testing.T) {
 	client := &ClientMock{}
 
 	tables := []struct {
-		x TotalsData
+		x RawData
 	}{
 		{
-			TotalsData{
+			RawData{
 				Date:                       "20200819",
 				TestsTotal:                 805609,
 				ConfirmedCasesTotal:        20483,
@@ -53,6 +55,8 @@ func TestFetchData(t *testing.T) {
 				CuredTotal:                 15148,
 				DeceasedTotal:              401,
 				CurrentlyHospitalizedTotal: 122,
+				TestsIncrease:              15401,
+				ConfirmedCasesIncrease:     1163,
 			},
 		},
 	}
