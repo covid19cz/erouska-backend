@@ -43,12 +43,6 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 	coviddata.DownloadCovidDataTotal(w, r)
 }
 
-// CalculateCovidDataIncrease handler.
-func CalculateCovidDataIncrease(ctx context.Context, e coviddata.FirestoreEvent) error {
-
-	return coviddata.CalculateCovidDataIncrease(ctx, e)
-}
-
 // GetCovidData handler.
 func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	coviddata.GetCovidData(w, r)
