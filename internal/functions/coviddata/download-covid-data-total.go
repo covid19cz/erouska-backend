@@ -36,6 +36,8 @@ type TotalsData struct {
 	CuredTotal                 int    `json:"vyleceni"  validate:"required"`
 	DeceasedTotal              int    `json:"umrti"  validate:"required"`
 	CurrentlyHospitalizedTotal int    `json:"aktualne_hospitalizovani"  validate:"required"`
+	TestsIncrease              int    `json:"provedene_testy_vcerejsi_den" validate:"required"`
+	ConfirmedCasesIncrease     int    `json:"potvrzene_pripady_vcerejsi_den" validate:"required"`
 }
 
 // TotalsDataFields are wrapped TotalsData from firestore response
@@ -47,6 +49,8 @@ type TotalsDataFields struct {
 	CuredTotal                 structs.IntegerValue `json:"curedTotal"  validate:"required"`
 	DeceasedTotal              structs.IntegerValue `json:"deceasedTotal"  validate:"required"`
 	CurrentlyHospitalizedTotal structs.IntegerValue `json:"currentlyHospitalizedTotal"  validate:"required"`
+	TestsIncrease              structs.IntegerValue `json:"testsIncrease" validate:"required"`
+	ConfirmedCasesIncrease     structs.IntegerValue `json:"confirmedCasesIncrease" validate:"required"`
 }
 
 // HTTPClient interface for mocking fetchData
@@ -144,7 +148,7 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Infof("Succesfully written data to firestore: %+v", d)
+	logger.Infof("Succesfully written totals data to firestore: %+v", d)
 
 	httputils.SendResponse(w, r, struct{ status string }{status: "OK"})
 }
