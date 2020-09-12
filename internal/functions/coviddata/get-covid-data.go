@@ -44,32 +44,6 @@ func fetchTotals(ctx context.Context, client store.Client, date string) (*Totals
 	return &totals, nil
 }
 
-func fetchIncrease(ctx context.Context, client store.Client, date string) (*IncreaseData, error) {
-	logger := logging.FromContext(ctx)
-
-	snap, err := client.Doc(constants.CollectionCovidDataIncrease, date).Get(ctx)
-
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return nil, &errors.NotFoundError{Msg: fmt.Sprintf("Could not find covid data for %v", date)}
-		}
-
-		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
-	}
-
-	logger.Infof("fetched firestore data: %+v", snap.Data())
-
-	var increase IncreaseData
-
-	if err := snap.DataTo(&increase); err != nil {
-		panic(fmt.Sprintf("could not parse input: %s", err))
-	}
-
-	logger.Infof("fetched data: %+v", increase)
-
-	return &increase, nil
-}
-
 // GetCovidData handler.
 func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
@@ -115,15 +89,6 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	increaseData, err := fetchIncrease(ctx, storeClient, date)
-	if err != nil {
-		logger.Errorf("Error fetching data from firestore: %v", err)
-		failed = true
-		if !shouldFallback {
-			httputils.SendErrorResponse(w, r, err)
-			return
-		}
-	}
 
 	if failed && shouldFallback {
 		// we try to fetch data from yesterday
@@ -136,28 +101,18 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 			httputils.SendErrorResponse(w, r, err)
 			return
 		}
-		increaseData, err = fetchIncrease(ctx, storeClient, date)
-		if err != nil {
-			logger.Errorf("Error refetching data from firestore: %v", err)
-			httputils.SendErrorResponse(w, r, err)
-			return
-		}
 	}
 
 	res := v1.GetCovidDataResponse{
-		Date:                          date,
-		TestsIncrease:                 increaseData.TestsIncrease,
-		TestsTotal:                    totalsData.TestsTotal,
-		ConfirmedCasesIncrease:        increaseData.ConfirmedCasesIncrease,
-		ConfirmedCasesTotal:           totalsData.ConfirmedCasesTotal,
-		ActiveCasesIncrease:           increaseData.ActiveCasesIncrease,
-		ActiveCasesTotal:              totalsData.ActiveCasesTotal,
-		CuredIncrease:                 increaseData.CuredIncrease,
-		CuredTotal:                    totalsData.CuredTotal,
-		DeceasedIncrease:              increaseData.DeceasedIncrease,
-		DeceasedTotal:                 totalsData.DeceasedTotal,
-		CurrentlyHospitalizedIncrease: increaseData.CurrentlyHospitalizedIncrease,
-		CurrentlyHospitalizedTotal:    totalsData.CurrentlyHospitalizedTotal,
+		Date:                       date,
+		TestsIncrease:              totalsData.TestsIncrease,
+		TestsTotal:                 totalsData.TestsTotal,
+		ConfirmedCasesIncrease:     totalsData.ConfirmedCasesIncrease,
+		ConfirmedCasesTotal:        totalsData.ConfirmedCasesTotal,
+		ActiveCasesTotal:           totalsData.ActiveCasesTotal,
+		CuredTotal:                 totalsData.CuredTotal,
+		DeceasedTotal:              totalsData.DeceasedTotal,
+		CurrentlyHospitalizedTotal: totalsData.CurrentlyHospitalizedTotal,
 	}
 
 	httputils.SendResponse(w, r, res)

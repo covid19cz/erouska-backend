@@ -24,8 +24,5 @@ const CollectionVerificationCodes = "verificationCodes"
 //CollectionCovidDataTotal Name of the collection.
 const CollectionCovidDataTotal = "covidDataTotal"
 
-//CollectionCovidDataIncrease Name of the collection.
-const CollectionCovidDataIncrease = "covidDataIncrease"
-
 //TopicRegisterNotification Name of the topic.
 const TopicRegisterNotification = "notification-registered"
