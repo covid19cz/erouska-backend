@@ -1,7 +1,7 @@
 package v1
 
 /*
-This files contains request/response structs for all endpoints. The structs have to be changed in
+This files contains request/response structs for all endpoints (except PublishKeys). The structs have to be changed in
 backward-compatible way and when it's not possible, copied to `v2` and changed there.
 */
 
