@@ -10,6 +10,10 @@ locals {
     "roles/datastore.user"
   ]
 
+  publishkeys_roles = [
+    "roles/cloudfunctions.serviceAgent",
+  ]
+
   getcoviddata_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/datastore.viewer"
@@ -91,6 +95,11 @@ resource "google_service_account" "downloadcoviddata" {
   display_name = "DownloadCovidDataTotal cloud function service account"
 }
 
+resource "google_service_account" "publishkeys" {
+  account_id   = "publish-keys"
+  display_name = "PublishKeys cloud function service account"
+}
+
 resource "google_service_account" "getcoviddata" {
   account_id   = "get-covid-data"
   display_name = "GetCovidData cloud function service account"
@@ -119,6 +128,12 @@ resource "google_service_account" "registernotification" {
 resource "google_service_account" "registernotificationaftermath" {
   account_id   = "reg-notification-aftermath"
   display_name = "RegisterNotificationAfterMath cloud function service account"
+}
+
+resource "google_project_iam_member" "publishkeys" {
+  count  = length(local.publishkeys_roles)
+  role   = local.publishkeys_roles[count.index]
+  member = "serviceAccount:${google_service_account.publishkeys.email}"
 }
 
 resource "google_project_iam_member" "downloadcoviddata" {
