@@ -7,6 +7,7 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/functions/changepushtoken"
 	"github.com/covid19cz/erouska-backend/internal/functions/coviddata"
 	"github.com/covid19cz/erouska-backend/internal/functions/isehridactive"
+	"github.com/covid19cz/erouska-backend/internal/functions/publishkeys"
 	"github.com/covid19cz/erouska-backend/internal/functions/registerehrid"
 	"github.com/covid19cz/erouska-backend/internal/functions/registernotification"
 
@@ -46,4 +47,9 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 // GetCovidData handler.
 func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	coviddata.GetCovidData(w, r)
+}
+
+// PublishKeys handler.
+func PublishKeys(w http.ResponseWriter, r *http.Request) {
+	publishkeys.PublishKeys(w, r)
 }
