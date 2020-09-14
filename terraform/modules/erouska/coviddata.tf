@@ -10,15 +10,41 @@ locals {
     "roles/datastore.user"
   ]
 
-  calculatecoviddata_roles = [
-    "roles/cloudfunctions.serviceAgent",
-    "roles/datastore.user"
-  ]
   getcoviddata_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/datastore.viewer"
   ]
 
+  changepushtoken_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.user"
+  ]
+
+  isehridactive_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.viewer"
+  ]
+
+  provideverificationcode_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.viewer",
+  ]
+
+  registerehrid_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/iam.serviceAccountTokenCreator",
+    "roles/datastore.user",
+  ]
+
+  registernotification_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.user",
+  ]
+
+  registernotificationaftermath_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.user",
+  ]
 }
 
 data "google_cloudfunctions_function" "downloadcovid" {
@@ -69,14 +95,39 @@ resource "google_service_account" "downloadcoviddata" {
   display_name = "DownloadCovidDataTotal cloud function service account"
 }
 
-resource "google_service_account" "calculatecoviddata" {
-  account_id   = "calculate-covid-data-increase"
-  display_name = "CalculateCovidDataIncrease cloud function service account"
-}
-
 resource "google_service_account" "getcoviddata" {
   account_id   = "get-covid-data"
   display_name = "GetCovidData cloud function service account"
+}
+
+resource "google_service_account" "changepushtoken" {
+  account_id   = "change-push-token"
+  display_name = "ChangePushToken cloud function service account"
+}
+
+resource "google_service_account" "isehridactive" {
+  account_id   = "is-ehrid-active"
+  display_name = "IsEhridActive cloud function service account"
+}
+
+resource "google_service_account" "provideverificationcode" {
+  account_id   = "provide-verification-code"
+  display_name = "ProvideVerificationCode cloud function service account"
+}
+
+resource "google_service_account" "registerehrid" {
+  account_id   = "register-ehrid"
+  display_name = "RegisterEhrid cloud function service account"
+}
+
+resource "google_service_account" "registernotification" {
+  account_id   = "register-notification"
+  display_name = "RegisterNotification cloud function service account"
+}
+
+resource "google_service_account" "registernotificationaftermath" {
+  account_id   = "reg-notification-aftermath"
+  display_name = "RegisterNotificationAfterMath cloud function service account"
 }
 
 resource "google_project_iam_member" "downloadcoviddata" {
@@ -85,14 +136,44 @@ resource "google_project_iam_member" "downloadcoviddata" {
   member = "serviceAccount:${google_service_account.downloadcoviddata.email}"
 }
 
-resource "google_project_iam_member" "calculatecoviddata" {
-  count  = length(local.downloadcoviddata_roles)
-  role   = local.calculatecoviddata_roles[count.index]
-  member = "serviceAccount:${google_service_account.calculatecoviddata.email}"
-}
-
 resource "google_project_iam_member" "getcoviddata" {
   count  = length(local.getcoviddata_roles)
   role   = local.getcoviddata_roles[count.index]
   member = "serviceAccount:${google_service_account.getcoviddata.email}"
+}
+
+resource "google_project_iam_member" "changepushtoken" {
+  count  = length(local.changepushtoken_roles)
+  role   = local.changepushtoken_roles[count.index]
+  member = "serviceAccount:${google_service_account.changepushtoken.email}"
+}
+
+resource "google_project_iam_member" "isehridactive" {
+  count  = length(local.isehridactive_roles)
+  role   = local.isehridactive_roles[count.index]
+  member = "serviceAccount:${google_service_account.isehridactive.email}"
+}
+
+resource "google_project_iam_member" "provideverificationcode" {
+  count  = length(local.provideverificationcode_roles)
+  role   = local.provideverificationcode_roles[count.index]
+  member = "serviceAccount:${google_service_account.provideverificationcode.email}"
+}
+
+resource "google_project_iam_member" "registerehrid" {
+  count  = length(local.registerehrid_roles)
+  role   = local.registerehrid_roles[count.index]
+  member = "serviceAccount:${google_service_account.registerehrid.email}"
+}
+
+resource "google_project_iam_member" "registernotification" {
+  count  = length(local.registernotification_roles)
+  role   = local.registernotification_roles[count.index]
+  member = "serviceAccount:${google_service_account.registernotification.email}"
+}
+
+resource "google_project_iam_member" "registernotificationaftermath" {
+  count  = length(local.registernotificationaftermath_roles)
+  role   = local.registernotificationaftermath_roles[count.index]
+  member = "serviceAccount:${google_service_account.registernotificationaftermath.email}"
 }
