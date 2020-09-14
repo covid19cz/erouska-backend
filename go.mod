@@ -11,6 +11,7 @@ require (
 	github.com/golang/gddo v0.0.0-20200715224205-051695c33a3f
 	github.com/google/exposure-notifications-server v0.7.0
 	github.com/google/go-cmp v0.5.2
+	github.com/sethvargo/go-envconfig v0.3.1
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/zap v1.16.0
