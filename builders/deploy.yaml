@@ -11,6 +11,7 @@ steps:
   - --runtime=go113
   - --memory=128
   - --allow-unauthenticated
+  - --service-account=register-ehrid@${PROJECT_ID}.iam.gserviceaccount.com
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -23,6 +24,7 @@ steps:
   - --runtime=go113
   - --memory=128
   - --allow-unauthenticated
+  - --service-account=is-ehrid-active@${PROJECT_ID}.iam.gserviceaccount.com
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -35,6 +37,7 @@ steps:
   - --runtime=go113
   - --memory=128
   - --allow-unauthenticated
+  - --service-account=change-push-token@${PROJECT_ID}.iam.gserviceaccount.com
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -47,6 +50,7 @@ steps:
     - --runtime=go113
     - --memory=128
     - --allow-unauthenticated
+    - --service-account=register-notification@${PROJECT_ID}.iam.gserviceaccount.com
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -59,6 +63,7 @@ steps:
     - --runtime=go113
     - --memory=128
     - --allow-unauthenticated
+    - --service-account=reg-notification-aftermath@${PROJECT_ID}.iam.gserviceaccount.com
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:

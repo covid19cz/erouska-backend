@@ -25,11 +25,6 @@ locals {
     "roles/datastore.viewer"
   ]
 
-  provideverificationcode_roles = [
-    "roles/cloudfunctions.serviceAgent",
-    "roles/datastore.viewer",
-  ]
-
   registerehrid_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/iam.serviceAccountTokenCreator",
@@ -110,11 +105,6 @@ resource "google_service_account" "isehridactive" {
   display_name = "IsEhridActive cloud function service account"
 }
 
-resource "google_service_account" "provideverificationcode" {
-  account_id   = "provide-verification-code"
-  display_name = "ProvideVerificationCode cloud function service account"
-}
-
 resource "google_service_account" "registerehrid" {
   account_id   = "register-ehrid"
   display_name = "RegisterEhrid cloud function service account"
@@ -152,12 +142,6 @@ resource "google_project_iam_member" "isehridactive" {
   count  = length(local.isehridactive_roles)
   role   = local.isehridactive_roles[count.index]
   member = "serviceAccount:${google_service_account.isehridactive.email}"
-}
-
-resource "google_project_iam_member" "provideverificationcode" {
-  count  = length(local.provideverificationcode_roles)
-  role   = local.provideverificationcode_roles[count.index]
-  member = "serviceAccount:${google_service_account.provideverificationcode.email}"
 }
 
 resource "google_project_iam_member" "registerehrid" {
