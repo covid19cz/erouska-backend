@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/covid19cz/erouska-backend/internal/auth"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
@@ -49,7 +48,7 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
 	storeClient := store.Client{}
-	authClient := auth.Client{}
+	//authClient := auth.Client{}
 
 	var req v1.GetCovidDataRequest
 
@@ -57,14 +56,14 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ehrid, err := authClient.AuthenticateToken(ctx, req.IDToken)
-	if err != nil {
-		logger.Debugf("Unverifiable token provided: %+v %+v", req.IDToken, err.Error())
-		httputils.SendErrorResponse(w, r, &errors.UnauthenticatedError{Msg: "Invalid token"})
-		return
-	}
-
-	logger.Debugf("Handling GetCovidData request: %v %+v", ehrid, req)
+	//ehrid, err := authClient.AuthenticateToken(ctx, req.IDToken)
+	//if err != nil {
+	//	logger.Debugf("Unverifiable token provided: %+v %+v", req.IDToken, err.Error())
+	//	httputils.SendErrorResponse(w, r, &errors.UnauthenticatedError{Msg: "Invalid token"})
+	//	return
+	//}
+	//
+	//logger.Debugf("Handling GetCovidData request: %v %+v", ehrid, req)
 
 	date := req.Date
 
