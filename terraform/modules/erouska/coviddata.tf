@@ -34,7 +34,6 @@ locals {
   registernotification_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/datastore.user",
-    "roles/pubsub.publisher",
   ]
 
   registernotificationaftermath_roles = [
