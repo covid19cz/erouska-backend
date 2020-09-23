@@ -33,7 +33,7 @@ func init() {
 	}
 
 	var err error
-	PubSubClient, err = pubsub.NewClient(ctx, constants.ProjectID)
+	PubSubClient, err = pubsub.NewClient(ctx, projectID)
 	if err != nil {
 		log.Fatalf("pubsub.NewClient: %v", err)
 	}
