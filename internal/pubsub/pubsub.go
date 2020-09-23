@@ -1,12 +1,13 @@
 package pubsub
 
 import (
-	"cloud.google.com/go/pubsub"
 	"context"
 	"encoding/json"
-	"github.com/covid19cz/erouska-backend/internal/constants"
 	"log"
 	"os"
+
+	"cloud.google.com/go/pubsub"
+	"github.com/covid19cz/erouska-backend/internal/constants"
 )
 
 //PubSubClient -_-
@@ -54,9 +55,12 @@ func (c Client) Publish(topic string, msg interface{}) error {
 		return err
 	}
 
-	t.Publish(context.Background(), &pubsub.Message{Data: payload})
+	result := t.Publish(context.Background(), &pubsub.Message{Data: payload})
 
-	return nil
+	// The Get method blocks until a server-generated ID or
+	// an error is returned for the published message.
+	_, err = result.Get(context.Background())
+	return err
 }
 
 //MockClient NOOP PubSub client.
