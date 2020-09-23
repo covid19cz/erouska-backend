@@ -12,6 +12,7 @@ steps:
   - --memory=128
   - --allow-unauthenticated
   - --service-account=register-ehrid@${PROJECT_ID}.iam.gserviceaccount.com
+  - --set-env-vars=PROJECT_ID=${PROJECT_ID}
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -25,6 +26,7 @@ steps:
   - --memory=128
   - --allow-unauthenticated
   - --service-account=is-ehrid-active@${PROJECT_ID}.iam.gserviceaccount.com
+  - --set-env-vars=PROJECT_ID=${PROJECT_ID}
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -38,6 +40,7 @@ steps:
   - --memory=128
   - --allow-unauthenticated
   - --service-account=change-push-token@${PROJECT_ID}.iam.gserviceaccount.com
+  - --set-env-vars=PROJECT_ID=${PROJECT_ID}
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -51,6 +54,7 @@ steps:
     - --memory=128
     - --allow-unauthenticated
     - --service-account=register-notification@${PROJECT_ID}.iam.gserviceaccount.com
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -64,6 +68,7 @@ steps:
     - --memory=128
     - --allow-unauthenticated
     - --service-account=reg-notification-aftermath@${PROJECT_ID}.iam.gserviceaccount.com
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -76,6 +81,7 @@ steps:
     - --runtime=go113
     - --memory=128
     - --service-account=download-covid-data-total@${PROJECT_ID}.iam.gserviceaccount.com
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -89,3 +95,4 @@ steps:
     - --memory=128
     - --allow-unauthenticated
     - --service-account=get-covid-data@${PROJECT_ID}.iam.gserviceaccount.com
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
