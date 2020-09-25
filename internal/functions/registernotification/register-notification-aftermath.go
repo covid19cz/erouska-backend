@@ -89,34 +89,16 @@ func AfterMath(ctx context.Context, m pubsub.Message) error {
 	// Step 3. Possibly increase notificationsCount
 
 	if thresholdsOK {
-		doc := client.Doc(constants.CollectionNotificationCounters, date)
+		// update daily counter
+		err = updateCounter(ctx, client, date)
 
-		err = client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-			rec, err := tx.Get(doc)
+		if err != nil {
+			logger.Warnf("Cannot handle register notification aftermath due to unknown error: %+v", err.Error())
+			return err
+		}
 
-			if err != nil {
-				if status.Code(err) != codes.NotFound {
-					return fmt.Errorf("Error while querying Firestore: %v", err)
-				}
-				// not found:
-
-				logger.Debugf("Saving default global daily state")
-				return tx.Set(doc, structs.NotificationCounter{NotificationsCount: 1})
-			}
-
-			var data structs.NotificationCounter
-			err = rec.DataTo(&data)
-			if err != nil {
-				return fmt.Errorf("Error while querying Firestore: %v", err)
-			}
-			logger.Debugf("Found global daily states: %+v", data)
-
-			data.NotificationsCount++
-
-			logger.Debugf("Saving updated global daily state: %+v", data)
-
-			return tx.Set(doc, data)
-		})
+		// update total counter
+		err = updateCounter(ctx, client, "total")
 
 		if err != nil {
 			logger.Warnf("Cannot handle register notification aftermath due to unknown error: %+v", err.Error())
@@ -129,4 +111,37 @@ func AfterMath(ctx context.Context, m pubsub.Message) error {
 	// Everything done!
 
 	return nil
+}
+
+func updateCounter(ctx context.Context, client store.Client, key string) error {
+	logger := logging.FromContext(ctx)
+
+	doc := client.Doc(constants.CollectionNotificationCounters, key)
+
+	return client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		rec, err := tx.Get(doc)
+
+		if err != nil {
+			if status.Code(err) != codes.NotFound {
+				return fmt.Errorf("Error while querying Firestore: %v", err)
+			}
+			// not found:
+
+			logger.Debugf("Saving default global daily state, key %v", key)
+			return tx.Set(doc, structs.NotificationCounter{NotificationsCount: 1})
+		}
+
+		var data structs.NotificationCounter
+		err = rec.DataTo(&data)
+		if err != nil {
+			return fmt.Errorf("Error while querying Firestore: %v", err)
+		}
+		logger.Debugf("Found global daily states, key %v: %+v", key, data)
+
+		data.NotificationsCount++
+
+		logger.Debugf("Saving updated global daily state, key %v: %+v", key, data)
+
+		return tx.Set(doc, data)
+	})
 }
