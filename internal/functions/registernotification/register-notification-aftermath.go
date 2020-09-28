@@ -3,7 +3,6 @@ package registernotification
 import (
 	"cloud.google.com/go/firestore"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
@@ -20,10 +19,10 @@ func AfterMath(ctx context.Context, m pubsub.Message) error {
 	logger := logging.FromContext(ctx)
 
 	var payload AftermathPayload
-	err := json.Unmarshal(m.Data, &payload)
 
-	if err != nil {
-		return fmt.Errorf("Error while parsing event payload: %v", err)
+	decodeErr := pubsub.DecodeJSONEvent(m, &payload)
+	if decodeErr != nil {
+		return fmt.Errorf("Error while parsing event payload: %v", decodeErr)
 	}
 
 	logger.Debugf("Doing registration aftermath for eHrid '%s'!", payload.Ehrid)
@@ -36,7 +35,7 @@ func AfterMath(ctx context.Context, m pubsub.Message) error {
 
 	var finalDailyCount int
 
-	err = client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+	err := client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		rec, err := tx.Get(doc)
 
 		if err != nil {
