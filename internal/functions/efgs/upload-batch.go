@@ -19,6 +19,13 @@ import (
 	"time"
 )
 
+type uploadConfiguration struct {
+	URL       *urlutils.URL
+	NBTLSPair *efgsutils.X509KeyPair
+	Client    *http.Client
+	BatchTag  string
+}
+
 //UploadBatch Called in CRON every 2 hours. Gets keys from database and upload them to EFGS.
 func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
@@ -141,7 +148,7 @@ func uploadBatchConfiguration(ctx context.Context) (*uploadConfiguration, error)
 	return &config, nil
 }
 
-func uploadBatch(ctx context.Context, batch *DiagnosisKeyBatch, config *uploadConfiguration) (*uploadResponse, error) {
+func uploadBatch(ctx context.Context, batch *DiagnosisKeyBatch, config *uploadConfiguration) (*uploadBatchResponse, error) {
 	logger := logging.FromContext(ctx)
 
 	raw, err := proto.Marshal(batch)
@@ -211,7 +218,7 @@ func uploadBatch(ctx context.Context, batch *DiagnosisKeyBatch, config *uploadCo
 		logger.Infof("%d keys (tag: %s) successfully uploaded", len(batch.Keys), config.BatchTag)
 		return nil, nil
 	case 207:
-		var parsedResponse uploadResponse
+		var parsedResponse uploadBatchResponse
 
 		jsonErr := json.Unmarshal(body, &parsedResponse)
 		if jsonErr != nil {
@@ -229,7 +236,7 @@ func uploadBatch(ctx context.Context, batch *DiagnosisKeyBatch, config *uploadCo
 	}
 }
 
-func filterInvalidDiagnosisKeys(ctx context.Context, resp *uploadResponse, keys []*DiagnosisKeyWrapper) []*DiagnosisKeyWrapper {
+func filterInvalidDiagnosisKeys(ctx context.Context, resp *uploadBatchResponse, keys []*DiagnosisKeyWrapper) []*DiagnosisKeyWrapper {
 	logger := logging.FromContext(ctx)
 	var filteredKeys = keys
 

@@ -21,7 +21,7 @@ var client = http.Client{}
 
 //PublishKeysToKeyServer Publish exposure keys to Keys server.
 func PublishKeysToKeyServer(ctx context.Context, haid string, maxBatchSize int, keys []keyserverapi.ExposureKey) error {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.PublishKeysToKeyServer")
 
 	keyServerConfig, err := utils.LoadKeyServerConfig(ctx)
 	if err != nil {
@@ -61,7 +61,7 @@ func PublishKeysToKeyServer(ctx context.Context, haid string, maxBatchSize int, 
 }
 
 func signAndPublishKeys(ctx context.Context, verificationServerConfig *utils.VerificationServerConfig, keyServerConfig *utils.KeyServerConfig, haid string, keys []keyserverapi.ExposureKey) (*keyserverapi.PublishResponse, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.signAndPublishKeys")
 
 	vc, err := requestNewVC(ctx, *verificationServerConfig)
 	if err != nil {
@@ -95,7 +95,7 @@ func signAndPublishKeys(ctx context.Context, verificationServerConfig *utils.Ver
 }
 
 func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (string, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.requestNewVC")
 
 	body, err := json.Marshal(&issueCodeRequest{
 		Phone:    "",
@@ -131,9 +131,12 @@ func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (s
 		return "", err
 	}
 
+	if response.StatusCode != 200 {
+		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
+	}
+
 	var r issueCodeResponse
-	err = json.Unmarshal(body, &r)
-	if err != nil {
+	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
 	logger.Debugf("Response: %+v", r)
@@ -146,7 +149,7 @@ func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (s
 }
 
 func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code string) (string, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.verifyCode")
 
 	body, err := json.Marshal(&verifyRequest{
 		Code: code,
@@ -181,9 +184,12 @@ func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code
 		return "", err
 	}
 
+	if response.StatusCode != 200 {
+		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
+	}
+
 	var r verifyResponse
-	err = json.Unmarshal(body, &r)
-	if err != nil {
+	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
 	logger.Debugf("Response: %+v", r)
@@ -196,7 +202,7 @@ func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code
 }
 
 func getCertificate(ctx context.Context, config utils.VerificationServerConfig, keys []keyserverapi.ExposureKey, token string, hmacKey []byte) (string, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.getCertificate")
 
 	hmac, err := efgsutils.CalculateExposureKeysHMAC(keys, hmacKey)
 	if err != nil {
@@ -238,9 +244,12 @@ func getCertificate(ctx context.Context, config utils.VerificationServerConfig, 
 		return "", err
 	}
 
+	if response.StatusCode != 200 {
+		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
+	}
+
 	var r certificateResponse
-	err = json.Unmarshal(body, &r)
-	if err != nil {
+	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
 	logger.Debugf("Response: %+v", r)
@@ -253,7 +262,7 @@ func getCertificate(ctx context.Context, config utils.VerificationServerConfig, 
 }
 
 func publishKeys(ctx context.Context, config utils.KeyServerConfig, haid string, keys []keyserverapi.ExposureKey, certificate string, secret []byte) (*keyserverapi.PublishResponse, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.publishKeys")
 
 	keysCount := len(keys)
 	logger.Infof("Publishing %v keys with HAID %v", keysCount, haid)
@@ -299,9 +308,12 @@ func publishKeys(ctx context.Context, config utils.KeyServerConfig, haid string,
 		return nil, err
 	}
 
+	if response.StatusCode != 200 {
+		return nil, fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
+	}
+
 	var r keyserverapi.PublishResponse
-	err = json.Unmarshal(body, &r)
-	if err != nil {
+	if err = json.Unmarshal(body, &r); err != nil {
 		return nil, err
 	}
 	logger.Debugf("Response: %+v", r)
