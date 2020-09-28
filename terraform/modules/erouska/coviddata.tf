@@ -69,6 +69,7 @@ locals {
     "roles/cloudfunctions.serviceAgent",
     "roles/datastore.user",
   ]
+
 }
 
 data "google_cloudfunctions_function" "downloadcovid" {
@@ -209,6 +210,7 @@ resource "google_service_account" "registernotificationaftermath" {
   account_id   = "reg-notification-aftermath"
   display_name = "RegisterNotificationAfterMath cloud function service account"
 }
+
 
 resource "google_project_iam_member" "preparemetrics" {
   count  = length(local.preparemetrics_roles)

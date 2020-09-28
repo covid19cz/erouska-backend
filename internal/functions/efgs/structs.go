@@ -1,9 +1,8 @@
 package efgs
 
 import (
-	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
-	"net/http"
-	"net/url"
+	"encoding/base64"
+	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"time"
 )
 
@@ -39,6 +38,22 @@ type certificateRequest struct {
 type certificateResponse struct {
 	genericVerServerResponse
 	Certificate string `json:"certificate"`
+}
+
+type downloadBatchResponse struct {
+	Keys []DiagnosisKeyWrapper `json:"keys"`
+}
+
+type uploadBatchResponse struct {
+	Error     []int `json:"500"`
+	Duplicate []int `json:"409"`
+	Success   []int `json:"201"`
+}
+
+//BatchDownloadParams Struct holding download input data.
+type BatchDownloadParams struct {
+	Date     string `json:"date" validate:"required"`
+	BatchTag string `json:"batchTag"`
 }
 
 //DiagnosisKeyWrapper map json response from EFGS to local DiagnosisKey structure
@@ -79,15 +94,12 @@ func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
 	}
 }
 
-type uploadResponse struct {
-	Error     []int `json:"500"`
-	Duplicate []int `json:"409"`
-	Success   []int `json:"201"`
-}
-
-type uploadConfiguration struct {
-	URL       *url.URL
-	NBTLSPair *efgsutils.X509KeyPair
-	Client    *http.Client
-	BatchTag  string
+//ToExposureKey convert struct from DiagnosisKeyWrapper to DiagnosisKey
+func (key *DiagnosisKey) ToExposureKey() keyserverapi.ExposureKey {
+	return keyserverapi.ExposureKey{
+		Key:              base64.StdEncoding.EncodeToString(key.KeyData),
+		IntervalNumber:   int32(key.RollingStartIntervalNumber),
+		IntervalCount:    int32(key.RollingPeriod),
+		TransmissionRisk: int(key.TransmissionRiskLevel),
+	}
 }
