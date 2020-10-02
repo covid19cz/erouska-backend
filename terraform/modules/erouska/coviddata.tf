@@ -68,7 +68,7 @@ resource "google_project_iam_member" "downloadcovid-invoker" {
 resource "google_cloud_scheduler_job" "downloadcovid-worker" {
   name             = "downloadcovid-worker"
   region           = var.cloudscheduler_location
-  schedule         = "0 3 * * *"
+  schedule         = "0 * * * *"
   time_zone        = "Europe/Prague"
   attempt_deadline = "600s"
 
