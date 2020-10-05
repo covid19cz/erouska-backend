@@ -22,6 +22,7 @@ jobs:
       - name: set environment variables
         uses: allenevans/set-env@v1.0.0
         with:
+          PROJECT_ID: 'NOOP'
           FIREBASE_URL: 'NOOP'
 
       - name: Install deps

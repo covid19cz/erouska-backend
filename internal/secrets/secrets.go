@@ -25,7 +25,7 @@ func init() {
 	}
 
 	if projectID == "NOOP" {
-		log.Printf("Mocking PubSub")
+		log.Printf("Mocking Secrets Manager")
 		return
 	}
 
