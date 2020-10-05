@@ -26,8 +26,3 @@ const CollectionCovidDataTotal = "covidDataTotal"
 
 //TopicRegisterNotification Name of the topic.
 const TopicRegisterNotification = "notification-registered"
-
-//KeyServerConfig Configuration of KeyServer.
-type KeyServerConfig struct {
-	URL string `env:"KEY_SERVER_URL, required"`
-}
