@@ -2,6 +2,40 @@ package efgs
 
 import "time"
 
+type genericVerServerResponse struct {
+	Error     string `json:"error"`
+	ErrorCode string `json:"errorCode"`
+}
+
+type issueCodeRequest struct {
+	Phone    string `json:"phone"`
+	TestType string `json:"testType"`
+}
+
+type issueCodeResponse struct {
+	genericVerServerResponse
+	Code string `json:"code"`
+}
+
+type verifyRequest struct {
+	Code string `json:"code"`
+}
+
+type verifyResponse struct {
+	genericVerServerResponse
+	Token string `json:"token"`
+}
+
+type certificateRequest struct {
+	Token   string `json:"token"`
+	KeyHmac string `json:"ekeyhmac"`
+}
+
+type certificateResponse struct {
+	genericVerServerResponse
+	Certificate string `json:"certificate"`
+}
+
 //DiagnosisKeyWrapper map json response from EFGS to local DiagnosisKey structure
 type DiagnosisKeyWrapper struct {
 	tableName                  struct{}  `pg:"diagnosis_keys,alias:dk"`
