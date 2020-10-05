@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/pkg/api/v1"
-	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -69,13 +68,13 @@ func passToKeyServer(ctx context.Context, request *v1.PublishKeysRequestServer) 
 		return nil, err
 	}
 
-	var keyServerConfig constants.KeyServerConfig
-	if err := envconfig.Process(ctx, &keyServerConfig); err != nil {
-		logger.Fatalf("Could not read KeyServerConfig: %v", err)
+	keyServerConfig, err := utils.LoadKeyServerConfig(ctx)
+	if err != nil {
+		logger.Fatalf("Could not load key server config: %v", err)
 		return nil, err
 	}
 
-	response, err := http.Post(keyServerConfig.URL, "application/json", bytes.NewBuffer(blob))
+	response, err := http.Post(keyServerConfig.GetURL("v1/publish"), "application/json", bytes.NewBuffer(blob))
 	if err != nil {
 		logger.Debugf("Could not obtain response from Key server: %v", err)
 		return nil, err
