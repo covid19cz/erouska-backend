@@ -120,12 +120,12 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 		Timeout: time.Second * 10, // Timeout after 10 seconds
 	}
 
-	d, err := fetchData(&spaceClient)
+	totalsData, err := fetchData(&spaceClient)
 	if err != nil {
 		logger.Errorf("Error while fetching data: %v", err)
 	}
 
-	date := d.Date
+	date := totalsData.Date
 
 	doc := client.Doc(constants.CollectionCovidDataTotal, date)
 
@@ -137,9 +137,10 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("Error while querying Firestore: %v", err)
 			}
 
-			return tx.Set(doc, *d)
+			return tx.Set(doc, *totalsData)
 		}
-		return nil
+
+		return tx.Set(doc, *totalsData)
 	})
 
 	if err != nil {
@@ -148,7 +149,7 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Infof("Succesfully written totals data to firestore: %+v", d)
+	logger.Infof("Successfully written totals data to firestore (key %v): %+v", date, totalsData)
 
 	httputils.SendResponse(w, r, struct{ status string }{status: "OK"})
 }
