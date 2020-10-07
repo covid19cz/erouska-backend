@@ -11,6 +11,7 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/pubsub"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/internal/utils/errors"
@@ -20,6 +21,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//AftermathPayload Struct holding aftermath input data.
+type AftermathPayload struct {
+	Ehrid string `json:"ehrid" validate:"required"`
+}
+
 const needsRetry = "needs_retry"
 
 //RegisterEhrid Register new user.
@@ -28,6 +34,7 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	logger := logging.FromContext(ctx)
 	storeClient := store.Client{}
 	authClient := auth.Client{}
+	pubSubClient := pubsub.Client{}
 
 	var request v1.RegisterEhridRequest
 
@@ -65,6 +72,15 @@ func RegisterEhrid(w http.ResponseWriter, r *http.Request) {
 	response := v1.RegisterEhridResponse{CustomToken: customToken}
 
 	httputils.SendResponse(w, r, response)
+
+	aftermathPayload := AftermathPayload{Ehrid: ehrid}
+
+	topicName := constants.TopicRegisterUser
+	logger.Debugf("Publishing event to %v: %+v", topicName, aftermathPayload)
+	err = pubSubClient.Publish(topicName, aftermathPayload)
+	if err != nil {
+		logger.Warnf("Could not send %v notification due to unknown error: %+v", topicName, err.Error())
+	}
 }
 
 func register(ctx context.Context, store store.Storer, generateEhrid func() string, registration structs.Registration) (string, error) {

@@ -16,6 +16,20 @@ steps:
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
+    - functions
+    - deploy
+    - RegisterEhridAfterMath
+    - --source=.
+    - --trigger-topic=user-registered
+    - --region=europe-west1
+    - --runtime=go113
+    - --memory=128
+    - --allow-unauthenticated
+    - --service-account=register-ehrid-aftermath@${PROJECT_ID}.iam.gserviceaccount.com
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+- name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
+  args:
   - functions
   - deploy
   - IsEhridActive

@@ -18,6 +18,11 @@ type NotificationCounter struct {
 	NotificationsCount int `json:"notificationsCount"`
 }
 
+//UserCounter DB entity for users counter.
+type UserCounter struct {
+	UsersCount int `json:"usersCount"`
+}
+
 //VerificationCodeMetadata DB entity for verification code metadata.
 type VerificationCodeMetadata struct {
 	VsMetadata map[string]interface{} `json:"vsMetadata"`

@@ -33,6 +33,12 @@ locals {
     "roles/cloudfunctions.serviceAgent",
     "roles/iam.serviceAccountTokenCreator",
     "roles/datastore.user",
+    "roles/pubsub.publisher",
+  ]
+
+  registerehridaftermath_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.user",
   ]
 
   registernotification_roles = [
@@ -120,6 +126,11 @@ resource "google_service_account" "registerehrid" {
   display_name = "RegisterEhrid cloud function service account"
 }
 
+resource "google_service_account" "registerehridaftermath" {
+  account_id   = "register-ehrid-aftermath"
+  display_name = "RegisterEhridAftermath cloud function service account"
+}
+
 resource "google_service_account" "registernotification" {
   account_id   = "register-notification"
   display_name = "RegisterNotification cloud function service account"
@@ -164,6 +175,12 @@ resource "google_project_iam_member" "registerehrid" {
   count  = length(local.registerehrid_roles)
   role   = local.registerehrid_roles[count.index]
   member = "serviceAccount:${google_service_account.registerehrid.email}"
+}
+
+resource "google_project_iam_member" "registerehridaftermath" {
+  count  = length(local.registerehridaftermath_roles)
+  role   = local.registerehridaftermath_roles[count.index]
+  member = "serviceAccount:${google_service_account.registerehridaftermath.email}"
 }
 
 resource "google_project_iam_member" "registernotification" {
