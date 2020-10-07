@@ -25,7 +25,7 @@ func AfterMath(ctx context.Context, m pubsub.Message) error {
 		return fmt.Errorf("Error while parsing event payload: %v", decodeErr)
 	}
 
-	logger.Debugf("Doing registration aftermath for eHrid '%s'!", payload.Ehrid)
+	logger.Debugf("Doing notification registration aftermath for eHrid '%s'!", payload.Ehrid)
 
 	client := store.Client{}
 

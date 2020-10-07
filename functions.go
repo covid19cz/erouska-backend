@@ -53,3 +53,8 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 func PublishKeys(w http.ResponseWriter, r *http.Request) {
 	publishkeys.PublishKeys(w, r)
 }
+
+//RegisterEhridAftermath handler.
+func RegisterEhridAftermath(ctx context.Context, m pubsub.Message) error {
+	return registerehrid.Aftermath(ctx, m)
+}

@@ -18,11 +18,14 @@ const CollectionDailyNotificationAttemptsIP = "dailyNotificationAttemptsIP"
 //CollectionNotificationCounters Name of the collection.
 const CollectionNotificationCounters = "notificationCounters"
 
-//CollectionVerificationCodes Name of the collection.
-const CollectionVerificationCodes = "verificationCodes"
-
 //CollectionCovidDataTotal Name of the collection.
 const CollectionCovidDataTotal = "covidDataTotal"
 
 //TopicRegisterNotification Name of the topic.
 const TopicRegisterNotification = "notification-registered"
+
+//TopicRegisterUser Name of the topic.
+const TopicRegisterUser = "user-registered"
+
+//DbUserCountersPrefix Prefix of user counters data in Realtime DB.
+const DbUserCountersPrefix = "userCounters/"
