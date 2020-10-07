@@ -3,21 +3,16 @@ package coviddata
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	"github.com/covid19cz/erouska-backend/internal/utils"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 )
 
@@ -127,21 +122,7 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 
 	date := totalsData.Date
 
-	doc := client.Doc(constants.CollectionCovidDataTotal, date)
-
-	err = client.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-		_, err := tx.Get(doc)
-
-		if err != nil {
-			if status.Code(err) != codes.NotFound {
-				return fmt.Errorf("Error while querying Firestore: %v", err)
-			}
-
-			return tx.Set(doc, *totalsData)
-		}
-
-		return tx.Set(doc, *totalsData)
-	})
+	_, err = client.Doc(constants.CollectionCovidDataTotal, date).Set(ctx, *totalsData)
 
 	if err != nil {
 		logger.Warnf("Cannot handle request due to unknown error: %+v", err.Error())
