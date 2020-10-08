@@ -2,6 +2,7 @@ package functions
 
 import (
 	"context"
+	"github.com/covid19cz/erouska-backend/internal/functions/metricsapi"
 	"github.com/covid19cz/erouska-backend/internal/pubsub"
 
 	"github.com/covid19cz/erouska-backend/internal/functions/changepushtoken"
@@ -47,6 +48,16 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 // GetCovidData handler.
 func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	coviddata.GetCovidData(w, r)
+}
+
+//PrepareNewMetricsVersion handler.
+func PrepareNewMetricsVersion(w http.ResponseWriter, r *http.Request) {
+	metricsapi.PrepareNewVersion(w, r)
+}
+
+//DownloadMetrics handler.
+func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
+	metricsapi.DownloadMetrics(w, r)
 }
 
 // PublishKeys handler.
