@@ -18,6 +18,7 @@ require (
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/zap v1.16.0
+	google.golang.org/api v0.31.0
 	google.golang.org/genproto v0.0.0-20200901141002-b3bf27a9dbd1
 	google.golang.org/grpc v1.31.1
 	google.golang.org/protobuf v1.25.0

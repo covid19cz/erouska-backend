@@ -124,3 +124,31 @@ steps:
     - --allow-unauthenticated
     - --service-account=publish-keys@${PROJECT_ID}.iam.gserviceaccount.com
     - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
+- name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
+  args:
+    - functions
+    - deploy
+    - PrepareNewMetricsVersion
+    - --source=.
+    - --trigger-http
+    - --region=europe-west1
+    - --runtime=go113
+    - --memory=128
+    - --allow-unauthenticated
+    - --service-account=prepare-metrics@${PROJECT_ID}.iam.gserviceaccount.com
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
+- name: 'gcr.io/cloud-builders/gcloud'
+  waitFor: ['-']
+  args:
+    - functions
+    - deploy
+    - DownloadMetrics
+    - --source=.
+    - --trigger-http
+    - --region=europe-west1
+    - --runtime=go113
+    - --memory=128
+    - --allow-unauthenticated
+    - --service-account=download-metrics@${PROJECT_ID}.iam.gserviceaccount.com
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}

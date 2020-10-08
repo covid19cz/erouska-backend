@@ -5,7 +5,22 @@ locals {
     "roles/iam.serviceAccountUser"
   ]
 
+  preparemetrics_invoker_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/iam.serviceAccountUser"
+  ]
+
   downloadcoviddata_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.user"
+  ]
+
+  preparemetrics_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.user"
+  ]
+
+  downloadmetrics_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/datastore.user"
   ]
@@ -96,6 +111,57 @@ resource "google_cloud_scheduler_job" "downloadcovid-worker" {
   ]
 }
 
+data "google_cloudfunctions_function" "preparemetrics" {
+  name    = "PrepareNewMetricsVersion"
+  project = var.project
+}
+
+resource "google_service_account" "preparemetrics-invoker" {
+  account_id   = "preparemetrics-invoker-sa"
+  display_name = "PrepareNewMetricsVersion invoker"
+}
+
+resource "google_project_iam_member" "preparemetrics-invoker" {
+  count  = length(local.preparemetrics_invoker_roles)
+  role   = local.preparemetrics_invoker_roles[count.index]
+  member = "serviceAccount:${google_service_account.preparemetrics-invoker.email}"
+}
+
+resource "google_cloud_scheduler_job" "preparemetrics-worker" {
+  name             = "preparemetrics-worker"
+  region           = var.cloudscheduler_location
+  schedule         = "0 5 * * *"
+  time_zone        = "Europe/Prague"
+  attempt_deadline = "600s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "GET"
+    uri         = data.google_cloudfunctions_function.preparemetrics.https_trigger_url
+    oidc_token {
+      audience              = data.google_cloudfunctions_function.preparemetrics.https_trigger_url
+      service_account_email = google_service_account.preparemetrics-invoker.email
+    }
+  }
+
+  depends_on = [
+    google_project_service.services["cloudscheduler.googleapis.com"],
+  ]
+}
+
+resource "google_service_account" "preparemetrics" {
+  account_id   = "prepare-metrics"
+  display_name = "PrepareNewMetricsVersion cloud function service account"
+}
+
+resource "google_service_account" "downloadmetrics" {
+  account_id   = "download-metrics"
+  display_name = "DownloadMetrics cloud function service account"
+}
+
 resource "google_service_account" "downloadcoviddata" {
   account_id   = "download-covid-data-total"
   display_name = "DownloadCovidDataTotal cloud function service account"
@@ -139,6 +205,18 @@ resource "google_service_account" "registernotification" {
 resource "google_service_account" "registernotificationaftermath" {
   account_id   = "reg-notification-aftermath"
   display_name = "RegisterNotificationAfterMath cloud function service account"
+}
+
+resource "google_project_iam_member" "preparemetrics" {
+  count  = length(local.preparemetrics_roles)
+  role   = local.preparemetrics_invoker_roles[count.index]
+  member = "serviceAccount:${google_service_account.preparemetrics.email}"
+}
+
+resource "google_project_iam_member" "downloadmetrics" {
+  count  = length(local.downloadmetrics_roles)
+  role   = local.downloadmetrics_roles[count.index]
+  member = "serviceAccount:${google_service_account.downloadmetrics.email}"
 }
 
 resource "google_project_iam_member" "publishkeys" {

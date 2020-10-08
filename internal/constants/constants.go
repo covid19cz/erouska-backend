@@ -18,6 +18,9 @@ const CollectionNotificationCounters = "notificationCounters"
 //CollectionCovidDataTotal Name of the collection.
 const CollectionCovidDataTotal = "covidDataTotal"
 
+//CollectionMetrics Name of the collection.
+const CollectionMetrics = "metrics"
+
 //TopicRegisterNotification Name of the topic.
 const TopicRegisterNotification = "notification-registered"
 
