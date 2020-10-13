@@ -1,6 +1,11 @@
 package efgs
 
-import "time"
+import (
+	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
+	"net/http"
+	"net/url"
+	"time"
+)
 
 type genericVerServerResponse struct {
 	Error     string `json:"error"`
@@ -47,19 +52,19 @@ type DiagnosisKeyWrapper struct {
 	TransmissionRiskLevel      int32     `json:"transmissionRiskLevel,omitempty"`
 	VisitedCountries           []string  `json:"visitedCountries,omitempty"`
 	Origin                     string    `pg:"default:'CZ'" json:"origin,omitempty"`
-	ReportType                 string    `json:"reportType,omitempty"`
+	ReportType                 int       `json:"reportType,omitempty"`
 	DaysSinceOnsetOfSymptoms   int32     `json:"days_since_onset_of_symptoms,omitempty"`
 }
 
 //ToData convert struct from DiagnosisKeyWrapper to DiagnosisKey
 func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
-	var mapReportType = map[string]ReportType{
-		"UNKNOWN":                      ReportType_UNKNOWN,
-		"CONFIRMED_TEST":               ReportType_CONFIRMED_TEST,
-		"CONFIRMED_CLINICAL_DIAGNOSIS": ReportType_CONFIRMED_CLINICAL_DIAGNOSIS,
-		"SELF_REPORT":                  ReportType_SELF_REPORT,
-		"RECURSIVE":                    ReportType_RECURSIVE,
-		"REVOKED":                      ReportType_REVOKED,
+	var mapReportType = map[int]ReportType{
+		0: ReportType_UNKNOWN,
+		1: ReportType_CONFIRMED_TEST,
+		2: ReportType_CONFIRMED_CLINICAL_DIAGNOSIS,
+		3: ReportType_SELF_REPORT,
+		4: ReportType_RECURSIVE,
+		5: ReportType_REVOKED,
 	}
 
 	return &DiagnosisKey{
@@ -72,4 +77,17 @@ func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
 		VisitedCountries:           wrappedKey.VisitedCountries,
 		ReportType:                 mapReportType[wrappedKey.ReportType],
 	}
+}
+
+type uploadResponse struct {
+	Error     []int `json:"500"`
+	Duplicate []int `json:"409"`
+	Success   []int `json:"201"`
+}
+
+type uploadConfiguration struct {
+	URL       *url.URL
+	NBTLSPair *efgsutils.X509KeyPair
+	Client    *http.Client
+	BatchTag  string
 }

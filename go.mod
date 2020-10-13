@@ -17,6 +17,7 @@ require (
 	github.com/sethvargo/go-envconfig v0.3.1
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/stretchr/testify v1.6.1
+	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1
 	go.uber.org/zap v1.16.0
 	google.golang.org/api v0.31.0
 	google.golang.org/genproto v0.0.0-20200901141002-b3bf27a9dbd1

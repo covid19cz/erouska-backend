@@ -2,6 +2,7 @@ package functions
 
 import (
 	"context"
+	"github.com/covid19cz/erouska-backend/internal/functions/efgs"
 	"github.com/covid19cz/erouska-backend/internal/functions/metricsapi"
 	"github.com/covid19cz/erouska-backend/internal/pubsub"
 
@@ -68,4 +69,9 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 //RegisterEhridAfterMath handler.
 func RegisterEhridAfterMath(ctx context.Context, m pubsub.Message) error {
 	return registerehrid.AfterMath(ctx, m)
+}
+
+//EfgsUploadKeys handler.
+func EfgsUploadKeys(w http.ResponseWriter, r *http.Request) {
+	efgs.UploadBatch(w, r)
 }
