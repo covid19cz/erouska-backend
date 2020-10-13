@@ -74,13 +74,13 @@ func (db Database) PersistDiagnosisKeys(keys []*DiagnosisKey) error {
 	return nil
 }
 
-//GetDiagnosisKeys Get keys from database that are not yet in EFGS and are older than date in parameter.
-func (db Database) GetDiagnosisKeys(date string) ([]*DiagnosisKeyWrapper, error) {
+//GetDiagnosisKeys Get keys from database that are not yet in EFGS and are older than dateTo and newer than dateFrom.
+func (db Database) GetDiagnosisKeys(dateFrom string) ([]*DiagnosisKeyWrapper, error) {
 	connection := db.connection.Conn()
 	defer connection.Close()
 
 	var keys []*DiagnosisKeyWrapper
-	if err := connection.Model(&keys).Where("created_at >= ?", date).Select(); err != nil {
+	if err := connection.Model(&keys).Where("created_at >= ?", dateFrom).Select(); err != nil {
 		return nil, err
 	}
 	return keys, nil
@@ -91,7 +91,7 @@ func (db Database) RemoveDiagnosisKey(keys []*DiagnosisKeyWrapper) error {
 	connection := db.connection.Conn()
 	defer connection.Close()
 
-	_, err := connection.Model(keys).WherePK().Delete()
+	_, err := connection.Model(&keys).WherePK().Delete()
 	if err != nil {
 		return err
 	}
