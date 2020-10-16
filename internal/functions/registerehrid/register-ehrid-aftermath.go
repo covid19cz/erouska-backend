@@ -12,8 +12,8 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/utils"
 )
 
-// Aftermath handler
-func Aftermath(ctx context.Context, m pubsub.Message) error {
+// AfterMath handler
+func AfterMath(ctx context.Context, m pubsub.Message) error {
 	logger := logging.FromContext(ctx)
 
 	var payload AftermathPayload

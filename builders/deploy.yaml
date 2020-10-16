@@ -137,7 +137,7 @@ steps:
     - --memory=128
     - --allow-unauthenticated
     - --service-account=prepare-metrics@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL},METRICS_PROJECT_ID=${_METRICS_PROJECT_ID}
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
