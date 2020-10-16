@@ -209,7 +209,7 @@ resource "google_service_account" "registernotificationaftermath" {
 
 resource "google_project_iam_member" "preparemetrics" {
   count  = length(local.preparemetrics_roles)
-  role   = local.preparemetrics_invoker_roles[count.index]
+  role   = local.preparemetrics_roles[count.index]
   member = "serviceAccount:${google_service_account.preparemetrics.email}"
 }
 
