@@ -18,7 +18,7 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx)
 
-	var date = time.Now().Add(time.Hour * -24)
+	var date = time.Now()
 
 	data, err := fetchMetrics(ctx, date)
 	if err != nil {
@@ -29,9 +29,9 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 
 	// fallback if data are not yet ready
 	if data == nil {
-		logger.Debugf("Data for %v are not ready yet, fallback to a day before", date)
+		logger.Debugf("Data for %v are not ready yet, fallback to yesterday", date)
 
-		var date = time.Now().Add(time.Hour * -48)
+		var date = time.Now().Add(time.Hour * -24)
 
 		fallbackData, err := fetchMetrics(ctx, date)
 		if err != nil {

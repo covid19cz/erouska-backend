@@ -69,11 +69,11 @@ func PrepareNewVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var date = time.Now().Add(time.Hour * -24).Format("20060102")
+	var today = time.Now().Format("20060102")
 
 	var data = MetricsData{
 		Modified:               now.Unix(),
-		Date:                   now.Format("20060102"),
+		Date:                   today,
 		ActivationsYesterday:   activations.yesterday,
 		ActivationsTotal:       activations.total,
 		KeyPublishersYesterday: publishers.yesterday,
@@ -84,7 +84,7 @@ func PrepareNewVersion(w http.ResponseWriter, r *http.Request) {
 
 	firestoreClient := store.Client{}
 
-	_, err = firestoreClient.Doc(constants.CollectionMetrics, date).Set(ctx, &data)
+	_, err = firestoreClient.Doc(constants.CollectionMetrics, today).Set(ctx, &data)
 	if err != nil {
 		logger.Errorf("Error while saving data: %v", err)
 		httputils.SendErrorResponse(w, r, err)
