@@ -1,3 +1,10 @@
+terraform {
+  backend "gcs" {
+    bucket = "erouska-terraform-state-prod"
+    prefix = "terraform-dev/erouska-backend/state"
+  }
+}
+
 module "erouska" {
 
   source                  = "../modules/erouska"
