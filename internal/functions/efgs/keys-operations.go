@@ -8,10 +8,30 @@ import (
 	"encoding/pem"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"go.mozilla.org/pkcs7"
 	"sort"
 	"unsafe"
 )
+
+//ToDiagnosisKey Converts ExposureKey to DiagnosisKey
+func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int32) *DiagnosisKey {
+	bytes, err := b64.StdEncoding.DecodeString(key.Key)
+	if err != nil {
+		panic(err) // this would be very, very bad!
+	}
+
+	return &DiagnosisKey{
+		KeyData:                    bytes,
+		RollingStartIntervalNumber: uint32(key.IntervalNumber),
+		RollingPeriod:              uint32(key.IntervalCount),
+		TransmissionRiskLevel:      int32(key.TransmissionRisk),
+		VisitedCountries:           visitedCountries,
+		Origin:                     origin,
+		ReportType:                 ReportType_CONFIRMED_TEST,
+		DaysSinceOnsetOfSymptoms:   daysSinceOnsetOfSymptoms,
+	}
+}
 
 func diagnosisKeyToBytes(key *DiagnosisKey) []byte {
 	var fieldSeparator byte = '.'

@@ -11,12 +11,12 @@ import (
 	"github.com/go-pg/pg/v10/orm"
 )
 
-//Singleton database struct.
-var database Database
+//Database Singleton connection to EFGS database.
+var Database DatabaseConnection
 
-//Database Contains database connection pool.
-type Database struct {
-	connection *pg.DB
+//DatabaseConnection Contains database connection pool.
+type DatabaseConnection struct {
+	inner *pg.DB
 }
 
 //Create new database connection pool. Credentials must be specified in secret manager.
@@ -46,7 +46,7 @@ func init() {
 		return
 	}
 
-	database.connection = pg.Connect(&pg.Options{
+	Database.inner = pg.Connect(&pg.Options{
 		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return proxy.Dial(string(efgsDatabaseConnectionName))
 		},
@@ -55,18 +55,18 @@ func init() {
 		Database: string(efgsDatabaseName),
 	})
 
-	if err := database.createSchema(); err != nil {
+	if err := Database.createSchema(); err != nil {
 		logger.Fatalf("Error while creating DB schema: %s", err)
 		return
 	}
 }
 
 //PersistDiagnosisKeys Save array of DiagnosisKey to database
-func (db Database) PersistDiagnosisKeys(keys []*DiagnosisKey) error {
-	connection := db.connection.Conn()
+func (db DatabaseConnection) PersistDiagnosisKeys(keys []*DiagnosisKey) error {
+	connection := db.inner.Conn()
 	defer connection.Close()
 
-	_, err := connection.Model(keys).Insert()
+	_, err := connection.Model(&keys).Insert()
 	if err != nil {
 		return err
 	}
@@ -75,8 +75,8 @@ func (db Database) PersistDiagnosisKeys(keys []*DiagnosisKey) error {
 }
 
 //GetDiagnosisKeys Get keys from database that are not yet in EFGS and are older than dateTo and newer than dateFrom.
-func (db Database) GetDiagnosisKeys(dateFrom string) ([]*DiagnosisKeyWrapper, error) {
-	connection := db.connection.Conn()
+func (db DatabaseConnection) GetDiagnosisKeys(dateFrom string) ([]*DiagnosisKeyWrapper, error) {
+	connection := db.inner.Conn()
 	defer connection.Close()
 
 	var keys []*DiagnosisKeyWrapper
@@ -87,8 +87,8 @@ func (db Database) GetDiagnosisKeys(dateFrom string) ([]*DiagnosisKeyWrapper, er
 }
 
 //RemoveDiagnosisKey Remove array of DiagnosisKeyWrapper from database.
-func (db Database) RemoveDiagnosisKey(keys []*DiagnosisKeyWrapper) error {
-	connection := db.connection.Conn()
+func (db DatabaseConnection) RemoveDiagnosisKey(keys []*DiagnosisKeyWrapper) error {
+	connection := db.inner.Conn()
 	defer connection.Close()
 
 	_, err := connection.Model(&keys).WherePK().Delete()
@@ -99,8 +99,8 @@ func (db Database) RemoveDiagnosisKey(keys []*DiagnosisKeyWrapper) error {
 	return nil
 }
 
-func (db Database) createSchema() error {
-	connection := db.connection.Conn()
+func (db DatabaseConnection) createSchema() error {
+	connection := db.inner.Conn()
 	defer connection.Close()
 
 	models := []interface{}{

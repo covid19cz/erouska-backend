@@ -39,7 +39,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keys, err := database.GetDiagnosisKeys(timeFrom)
+	keys, err := Database.GetDiagnosisKeys(timeFrom)
 	if err != nil {
 		logger.Errorf("Downloading keys error: %s", err)
 		sendErrorResponse(w, err)
@@ -85,7 +85,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("Batch %s successfully uploaded", uploadConfig.BatchTag)
 	}
 
-	if err := database.RemoveDiagnosisKey(keys); err != nil {
+	if err := Database.RemoveDiagnosisKey(keys); err != nil {
 		logger.Errorf("Removing uploaded keys from database failed: %s", err)
 		sendErrorResponse(w, err)
 		return
