@@ -4,23 +4,29 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/functions/efgs"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"go.uber.org/zap"
+	"io/ioutil"
 	"net/http"
 )
+
+const countryOfOrigin = "CZ"
+
+var defaultVisitedCountries = []string{"DE", "AT"} // TODO // this could be a constant but we're in fckn Go
 
 //PublishKeys Handler
 func PublishKeys(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("PublishKeys")
 
 	var request v1.PublishKeysRequestDevice
 
 	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(&request)
-	if err != nil {
+	if err := dec.Decode(&request); err != nil {
 		logger.Errorf("Could not deserialize request from device: %v", err)
 		http.Error(w, "Could not deserialize", http.StatusBadRequest)
 		return
@@ -41,9 +47,14 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 	if serverResponse.Code == "" && serverResponse.ErrorMessage == "" {
 		logger.Infof("Successfully uploaded %v keys to Key server (%v keys sent)", serverResponse.InsertedExposures, len(serverRequest.Keys))
 
-		err = handleKeysUpload(ctx, request)
-		if err != nil {
-			logger.Errorf("Error while processing keys upload: %v", err)
+		if request.ConsentToFederation {
+			if err = handleKeysUpload(request); err != nil {
+				logger.Errorf("Error while processing keys persistence: %v", err)
+			} else {
+				logger.Info("Saved uploaded keys to efgs database")
+			}
+		} else {
+			logger.Info("Federation is disabled for this request")
 		}
 	} else {
 		// error has occurred!
@@ -53,14 +64,22 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 	sendResponseToClient(logger, w, toDeviceResponse(serverResponse))
 }
 
-func handleKeysUpload(ctx context.Context, request v1.PublishKeysRequestDevice) error {
-	// TODO save to DB
+func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
+	visitedCountries := request.VisitedCountries
+	if len(visitedCountries) == 0 {
+		visitedCountries = defaultVisitedCountries
+	}
 
-	return nil
+	var keys []*efgs.DiagnosisKey
+	for _, k := range request.Keys {
+		keys = append(keys, efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, request.SymptomOnsetInterval))
+	}
+
+	return efgs.Database.PersistDiagnosisKeys(keys)
 }
 
 func passToKeyServer(ctx context.Context, request *v1.PublishKeysRequestServer) (*v1.PublishKeysResponseServer, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("passToKeyServer")
 
 	blob, err := json.Marshal(request)
 	if err != nil {
@@ -80,11 +99,22 @@ func passToKeyServer(ctx context.Context, request *v1.PublishKeysRequestServer) 
 		return nil, err
 	}
 
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := response.Body.Close(); err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		return nil, fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
+	}
+
 	var serverResponse v1.PublishKeysResponseServer
 
-	dec := json.NewDecoder(response.Body)
-	err = dec.Decode(&serverResponse)
-	if err != nil {
+	if err = json.Unmarshal(body, &serverResponse); err != nil {
 		logger.Debugf("Could not deserialize response from Key server: %v", err)
 		return nil, err
 	}
