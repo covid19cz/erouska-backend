@@ -6,7 +6,6 @@ import (
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
 	"firebase.google.com/go/db"
-	"github.com/covid19cz/erouska-backend/internal/constants"
 	"log"
 	"os"
 )
@@ -23,19 +22,24 @@ var FirebaseAuth *auth.Client
 func init() {
 	ctx := context.Background()
 
-	firebaseURL := constants.FirebaseURL
-	url, exists := os.LookupEnv("FIREBASE_URL")
-	if exists {
-		firebaseURL = url
+	projectID, ok := os.LookupEnv("PROJECT_ID")
+	if !ok {
+		panic("PROJECT_ID env must be configured!")
 	}
 
-	if firebaseURL == "NOOP" {
+	firebaseDbURL := "https://" + projectID + ".firebaseio.com/"
+	url, exists := os.LookupEnv("FIREBASE_URL")
+	if exists {
+		firebaseDbURL = url
+	}
+
+	if firebaseDbURL == "NOOP" {
 		log.Printf("Mocking Firebase")
 		return
 	}
 
 	conf := &firebase.Config{
-		DatabaseURL: firebaseURL,
+		DatabaseURL: firebaseDbURL,
 	}
 
 	app, err := firebase.NewApp(ctx, conf)

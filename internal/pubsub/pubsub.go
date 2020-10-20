@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/covid19cz/erouska-backend/internal/constants"
 )
 
 //PubSubClient -_-
@@ -29,10 +28,9 @@ type Message struct {
 func init() {
 	ctx := context.Background()
 
-	projectID := constants.ProjectID
-	id, exists := os.LookupEnv("PROJECT_ID")
-	if exists {
-		projectID = id
+	projectID, ok := os.LookupEnv("PROJECT_ID")
+	if !ok {
+		panic("PROJECT_ID env must be configured!")
 	}
 
 	if projectID == "NOOP" {

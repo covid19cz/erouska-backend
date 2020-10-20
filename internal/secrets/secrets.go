@@ -4,7 +4,6 @@ import (
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"context"
 	"fmt"
-	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 	"log"
@@ -18,10 +17,9 @@ var projectID string
 func init() {
 	ctx := context.Background()
 
-	projectID = constants.ProjectID
-	id, exists := os.LookupEnv("PROJECT_ID")
-	if exists {
-		projectID = id
+	projectID, ok := os.LookupEnv("PROJECT_ID")
+	if !ok {
+		panic("PROJECT_ID env must be configured!")
 	}
 
 	if projectID == "NOOP" {

@@ -1,11 +1,5 @@
 package constants
 
-//ProjectID GCP project ID
-const ProjectID = "erouska-key-server-dev"
-
-//FirebaseURL URL to our firebase DB.
-const FirebaseURL = "https://" + ProjectID + ".firebaseio.com/"
-
 //CollectionRegistrations Name of the collection.
 const CollectionRegistrations = "registrations_v2"
 
