@@ -17,7 +17,9 @@ locals {
 
   preparemetrics_roles = [
     "roles/cloudfunctions.serviceAgent",
-    "roles/datastore.user"
+    "roles/datastore.viewer",
+    "roles/firebasedatabase.viewer",
+    "roles/monitoring.timeSeries.list"
   ]
 
   downloadmetrics_roles = [
@@ -54,6 +56,7 @@ locals {
   registerehridaftermath_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/datastore.user",
+    "roles/firebasedatabase.admin",
   ]
 
   registernotification_roles = [
