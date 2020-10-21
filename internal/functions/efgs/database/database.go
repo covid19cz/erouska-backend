@@ -2,69 +2,89 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"github.com/GoogleCloudPlatform/cloudsql-proxy/proxy/proxy"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	"github.com/covid19cz/erouska-backend/internal/logging"
-	"net"
-
-	"github.com/GoogleCloudPlatform/cloudsql-proxy/proxy/proxy"
 	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
+	"net"
+	"sync"
 )
 
 //Database Singleton connection to EFGS database.
 var Database Connection
 
+type lazyConnection func() *pg.DB
+
 //Connection Contains database connection pool.
 type Connection struct {
-	inner *pg.DB
+	inner lazyConnection
 }
 
-//Create new database connection pool. Credentials must be specified in secret manager.
+//Create new (lazy) database connection pool. Credentials must be specified in secret manager.
 func init() {
-	ctx := context.Background()
-	logger := logging.FromContext(ctx).Named("efgs.database.init")
-	secretsClient := secrets.Client{}
+	connectToDatabase := func() *pg.DB {
+		ctx := context.Background()
+		logger := logging.FromContext(ctx).Named("efgs.database.connectToDatabase")
+		secretsClient := secrets.Client{}
 
-	efgsDatabaseName, err := secretsClient.Get("efgs-database-name")
-	if err != nil {
-		logger.Fatalf("Connection to secret manager failed: %s", err)
-		return
-	}
-	efgsDatabasePassword, err := secretsClient.Get("efgs-database-password")
-	if err != nil {
-		logger.Fatalf("Connection to secret manager failed: %s", err)
-		return
-	}
-	efgsDatabaseUser, err := secretsClient.Get("efgs-database-login")
-	if err != nil {
-		logger.Fatalf("Connection to secret manager failed: %s", err)
-		return
-	}
-	efgsDatabaseConnectionName, err := secretsClient.Get("efgs-database-connection-name")
-	if err != nil {
-		logger.Fatalf("Connection to secret manager failed: %s", err)
-		return
+		logger.Debug("Initializing EFGS database connection")
+
+		efgsDatabaseName, err := secretsClient.Get("efgs-database-name")
+		if err != nil {
+			panic(fmt.Sprintf("Connection to secret manager failed: %s", err))
+		}
+		efgsDatabasePassword, err := secretsClient.Get("efgs-database-password")
+		if err != nil {
+			panic(fmt.Sprintf("Connection to secret manager failed: %s", err))
+		}
+		efgsDatabaseUser, err := secretsClient.Get("efgs-database-login")
+		if err != nil {
+			panic(fmt.Sprintf("Connection to secret manager failed: %s", err))
+		}
+		efgsDatabaseConnectionName, err := secretsClient.Get("efgs-database-connection-name")
+		if err != nil {
+			panic(fmt.Sprintf("Connection to secret manager failed: %s", err))
+		}
+
+		connection := pg.Connect(&pg.Options{
+			Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return proxy.Dial(string(efgsDatabaseConnectionName))
+			},
+			User:     string(efgsDatabaseUser),
+			Password: string(efgsDatabasePassword),
+			Database: string(efgsDatabaseName),
+		})
+
+		if err := createSchema(connection); err != nil {
+			panic(fmt.Sprintf("Error while creating DB schema: %s", err))
+		}
+
+		return connection
 	}
 
-	Database.inner = pg.Connect(&pg.Options{
-		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return proxy.Dial(string(efgsDatabaseConnectionName))
-		},
-		User:     string(efgsDatabaseUser),
-		Password: string(efgsDatabasePassword),
-		Database: string(efgsDatabaseName),
-	})
+	// run the above just once, but lazy:
 
-	if err := Database.createSchema(); err != nil {
-		logger.Fatalf("Error while creating DB schema: %s", err)
-		return
+	var conn *pg.DB
+	var once sync.Once
+
+	initInner := func() *pg.DB {
+		once.Do(func() {
+			conn = connectToDatabase()
+		})
+		return conn
+	}
+
+	Database = Connection{
+		inner: initInner,
 	}
 }
 
 //PersistDiagnosisKeys Save array of DiagnosisKey to database
 func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
-	connection := db.inner.Conn()
+	connection := db.inner().Conn()
 	defer connection.Close()
 
 	_, err := connection.Model(&keys).Insert()
@@ -77,7 +97,7 @@ func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
 
 //GetDiagnosisKeys Get keys from database that are not yet in EFGS and are older than dateTo and newer than dateFrom.
 func (db Connection) GetDiagnosisKeys(dateFrom string) ([]*efgsapi.DiagnosisKeyWrapper, error) {
-	connection := db.inner.Conn()
+	connection := db.inner().Conn()
 	defer connection.Close()
 
 	var keys []*efgsapi.DiagnosisKeyWrapper
@@ -89,7 +109,7 @@ func (db Connection) GetDiagnosisKeys(dateFrom string) ([]*efgsapi.DiagnosisKeyW
 
 //RemoveDiagnosisKey Remove array of DiagnosisKeyWrapper from database.
 func (db Connection) RemoveDiagnosisKey(keys []*efgsapi.DiagnosisKeyWrapper) error {
-	connection := db.inner.Conn()
+	connection := db.inner().Conn()
 	defer connection.Close()
 
 	_, err := connection.Model(&keys).WherePK().Delete()
@@ -100,8 +120,8 @@ func (db Connection) RemoveDiagnosisKey(keys []*efgsapi.DiagnosisKeyWrapper) err
 	return nil
 }
 
-func (db Connection) createSchema() error {
-	connection := db.inner.Conn()
+func createSchema(cpool *pg.DB) error {
+	connection := cpool.Conn()
 	defer connection.Close()
 
 	models := []interface{}{
