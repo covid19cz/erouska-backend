@@ -17,15 +17,17 @@ var projectID string
 func init() {
 	ctx := context.Background()
 
-	projectID, ok := os.LookupEnv("PROJECT_ID")
+	projectID_, ok := os.LookupEnv("PROJECT_ID")
 	if !ok {
 		panic("PROJECT_ID env must be configured!")
 	}
 
-	if projectID == "NOOP" {
+	if projectID_ == "NOOP" {
 		log.Printf("Mocking Secrets Manager")
 		return
 	}
+
+	projectID = projectID_ // Fuck you, Go!
 
 	var err error
 	SecretsManagerClient, err = secretmanager.NewClient(ctx)
@@ -47,10 +49,12 @@ func (c Client) Get(name string) ([]byte, error) {
 	ctx := context.Background()
 	var logger = logging.FromContext(ctx)
 
-	logger.Debugf("Accessing secret '%v'", name)
+	fullName := fmt.Sprintf("projects/%v/secrets/%v/versions/latest", projectID, name)
+
+	logger.Debugf("Accessing secret '%v'", fullName)
 
 	var req = secretmanagerpb.AccessSecretVersionRequest{
-		Name: fmt.Sprintf("projects/%v/secrets/%v/versions/latest", projectID, name),
+		Name: fullName,
 	}
 
 	secret, err := SecretsManagerClient.AccessSecretVersion(ctx, &req)
