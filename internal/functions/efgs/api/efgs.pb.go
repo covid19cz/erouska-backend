@@ -4,7 +4,7 @@
 // 	protoc        v3.12.4
 // source: efgs.proto
 
-package efgs
+package api
 
 import (
 	proto "github.com/golang/protobuf/proto"

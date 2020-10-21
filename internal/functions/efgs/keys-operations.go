@@ -6,6 +6,7 @@ import (
 	b64 "encoding/base64"
 	"encoding/binary"
 	"encoding/pem"
+	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
@@ -15,25 +16,25 @@ import (
 )
 
 //ToDiagnosisKey Converts ExposureKey to DiagnosisKey
-func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int32) *DiagnosisKey {
+func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int32) *efgsapi.DiagnosisKey {
 	bytes, err := b64.StdEncoding.DecodeString(key.Key)
 	if err != nil {
 		panic(err) // this would be very, very bad!
 	}
 
-	return &DiagnosisKey{
+	return &efgsapi.DiagnosisKey{
 		KeyData:                    bytes,
 		RollingStartIntervalNumber: uint32(key.IntervalNumber),
 		RollingPeriod:              uint32(key.IntervalCount),
 		TransmissionRiskLevel:      int32(key.TransmissionRisk),
 		VisitedCountries:           visitedCountries,
 		Origin:                     origin,
-		ReportType:                 ReportType_CONFIRMED_TEST,
+		ReportType:                 efgsapi.ReportType_CONFIRMED_TEST,
 		DaysSinceOnsetOfSymptoms:   daysSinceOnsetOfSymptoms,
 	}
 }
 
-func diagnosisKeyToBytes(key *DiagnosisKey) []byte {
+func diagnosisKeyToBytes(key *efgsapi.DiagnosisKey) []byte {
 	var fieldSeparator byte = '.'
 	var keyBytes []byte
 	keyBytes = append(keyBytes, []byte(b64.StdEncoding.EncodeToString(key.KeyData))[:]...)
@@ -56,7 +57,7 @@ func diagnosisKeyToBytes(key *DiagnosisKey) []byte {
 	return keyBytes
 }
 
-func batchToBytes(diagnosisKey *DiagnosisKeyBatch) []byte {
+func batchToBytes(diagnosisKey *efgsapi.DiagnosisKeyBatch) []byte {
 	var rawDiagnosisKey []byte
 	for _, k := range diagnosisKey.Keys {
 		rawDiagnosisKey = append(rawDiagnosisKey, diagnosisKeyToBytes(k)[:]...)
@@ -88,20 +89,20 @@ func serializeVisitedCountries(countries []string) []byte {
 	return []byte(b64.StdEncoding.EncodeToString(visitedCountries))
 }
 
-func sortDiagnosisKey(keys []*DiagnosisKey) {
+func sortDiagnosisKey(keys []*efgsapi.DiagnosisKey) {
 	sort.SliceStable(keys, func(i, j int) bool {
 		return b64.StdEncoding.EncodeToString(diagnosisKeyToBytes(keys[j])) > b64.StdEncoding.EncodeToString(diagnosisKeyToBytes(keys[i]))
 	})
 }
 
-func makeBatch(keys []*DiagnosisKey) DiagnosisKeyBatch {
-	return DiagnosisKeyBatch{
+func makeBatch(keys []*efgsapi.DiagnosisKey) efgsapi.DiagnosisKeyBatch {
+	return efgsapi.DiagnosisKeyBatch{
 		Keys: keys,
 	}
 }
 
-func signBatch(ctx context.Context, diagnosisKey *DiagnosisKeyBatch) (string, error) {
-	logger := logging.FromContext(ctx)
+func signBatch(ctx context.Context, diagnosisKey *efgsapi.DiagnosisKeyBatch) (string, error) {
+	logger := logging.FromContext(ctx).Named("efgs.signBatch")
 
 	nbbsPair, err := efgsutils.LoadX509KeyPair(ctx, efgsutils.NBBS)
 	if err != nil {
@@ -139,6 +140,10 @@ func signBatch(ctx context.Context, diagnosisKey *DiagnosisKeyBatch) (string, er
 
 	signedBatch.Detach()
 	detachedSignature, err := signedBatch.Finish()
+	if err != nil {
+		logger.Debugf("Could not sign batch", err)
+		return "", err
+	}
 
 	logger.Infof("Batch signature in base64: %s\n", b64.StdEncoding.EncodeToString(detachedSignature))
 

@@ -1,4 +1,4 @@
-package efgs
+package api
 
 import (
 	"encoding/base64"
@@ -6,45 +6,54 @@ import (
 	"time"
 )
 
-type genericVerServerResponse struct {
+//GenericVerServerResponse Generic part of the Verification server response.
+type GenericVerServerResponse struct {
 	Error     string `json:"error"`
 	ErrorCode string `json:"errorCode"`
 }
 
-type issueCodeRequest struct {
+//IssueCodeRequest Issue code request to the Verification server
+type IssueCodeRequest struct {
 	Phone    string `json:"phone"`
 	TestType string `json:"testType"`
 }
 
-type issueCodeResponse struct {
-	genericVerServerResponse
+//IssueCodeResponse Issue code response from the Verification server
+type IssueCodeResponse struct {
+	GenericVerServerResponse
 	Code string `json:"code"`
 }
 
-type verifyRequest struct {
+//VerifyRequest  Verify request to the Verification server
+type VerifyRequest struct {
 	Code string `json:"code"`
 }
 
-type verifyResponse struct {
-	genericVerServerResponse
+//VerifyResponse Verify response from the Verification server
+type VerifyResponse struct {
+	GenericVerServerResponse
 	Token string `json:"token"`
 }
 
-type certificateRequest struct {
+//CertificateRequest Cerificate request to the Verification server
+type CertificateRequest struct {
 	Token   string `json:"token"`
 	KeyHmac string `json:"ekeyhmac"`
 }
 
-type certificateResponse struct {
-	genericVerServerResponse
+//CertificateResponse Certificate response to the Verification server
+type CertificateResponse struct {
+	GenericVerServerResponse
 	Certificate string `json:"certificate"`
 }
 
-type downloadBatchResponse struct {
+//DownloadBatchResponse Response for download batch call to EFGS
+type DownloadBatchResponse struct {
 	Keys []DiagnosisKeyWrapper `json:"keys"`
 }
 
-type uploadBatchResponse struct {
+//UploadBatchResponse Response for upload batch call to EFGS
+type UploadBatchResponse struct {
 	Error     []int `json:"500"`
 	Duplicate []int `json:"409"`
 	Success   []int `json:"201"`

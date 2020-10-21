@@ -1,7 +1,8 @@
-package efgs
+package database
 
 import (
 	"context"
+	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"net"
 
@@ -12,17 +13,17 @@ import (
 )
 
 //Database Singleton connection to EFGS database.
-var Database DatabaseConnection
+var Database Connection
 
-//DatabaseConnection Contains database connection pool.
-type DatabaseConnection struct {
+//Connection Contains database connection pool.
+type Connection struct {
 	inner *pg.DB
 }
 
 //Create new database connection pool. Credentials must be specified in secret manager.
 func init() {
 	ctx := context.Background()
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.database.init")
 	secretsClient := secrets.Client{}
 
 	efgsDatabaseName, err := secretsClient.Get("efgs-database-name")
@@ -62,7 +63,7 @@ func init() {
 }
 
 //PersistDiagnosisKeys Save array of DiagnosisKey to database
-func (db DatabaseConnection) PersistDiagnosisKeys(keys []*DiagnosisKey) error {
+func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
 	connection := db.inner.Conn()
 	defer connection.Close()
 
@@ -75,11 +76,11 @@ func (db DatabaseConnection) PersistDiagnosisKeys(keys []*DiagnosisKey) error {
 }
 
 //GetDiagnosisKeys Get keys from database that are not yet in EFGS and are older than dateTo and newer than dateFrom.
-func (db DatabaseConnection) GetDiagnosisKeys(dateFrom string) ([]*DiagnosisKeyWrapper, error) {
+func (db Connection) GetDiagnosisKeys(dateFrom string) ([]*efgsapi.DiagnosisKeyWrapper, error) {
 	connection := db.inner.Conn()
 	defer connection.Close()
 
-	var keys []*DiagnosisKeyWrapper
+	var keys []*efgsapi.DiagnosisKeyWrapper
 	if err := connection.Model(&keys).Where("created_at >= ?", dateFrom).Select(); err != nil {
 		return nil, err
 	}
@@ -87,7 +88,7 @@ func (db DatabaseConnection) GetDiagnosisKeys(dateFrom string) ([]*DiagnosisKeyW
 }
 
 //RemoveDiagnosisKey Remove array of DiagnosisKeyWrapper from database.
-func (db DatabaseConnection) RemoveDiagnosisKey(keys []*DiagnosisKeyWrapper) error {
+func (db Connection) RemoveDiagnosisKey(keys []*efgsapi.DiagnosisKeyWrapper) error {
 	connection := db.inner.Conn()
 	defer connection.Close()
 
@@ -99,12 +100,12 @@ func (db DatabaseConnection) RemoveDiagnosisKey(keys []*DiagnosisKeyWrapper) err
 	return nil
 }
 
-func (db DatabaseConnection) createSchema() error {
+func (db Connection) createSchema() error {
 	connection := db.inner.Conn()
 	defer connection.Close()
 
 	models := []interface{}{
-		(*DiagnosisKeyWrapper)(nil),
+		(*efgsapi.DiagnosisKeyWrapper)(nil),
 	}
 
 	for _, model := range models {

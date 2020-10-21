@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/utils"
@@ -97,7 +98,7 @@ func signAndPublishKeys(ctx context.Context, verificationServerConfig *utils.Ver
 func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.requestNewVC")
 
-	body, err := json.Marshal(&issueCodeRequest{
+	body, err := json.Marshal(&efgsapi.IssueCodeRequest{
 		Phone:    "",
 		TestType: "confirmed",
 	})
@@ -135,7 +136,7 @@ func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (s
 		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
 	}
 
-	var r issueCodeResponse
+	var r efgsapi.IssueCodeResponse
 	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
@@ -151,7 +152,7 @@ func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (s
 func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code string) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.verifyCode")
 
-	body, err := json.Marshal(&verifyRequest{
+	body, err := json.Marshal(&efgsapi.VerifyRequest{
 		Code: code,
 	})
 
@@ -188,7 +189,7 @@ func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code
 		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
 	}
 
-	var r verifyResponse
+	var r efgsapi.VerifyResponse
 	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
@@ -210,7 +211,7 @@ func getCertificate(ctx context.Context, config utils.VerificationServerConfig, 
 		return "", err
 	}
 
-	body, err := json.Marshal(&certificateRequest{
+	body, err := json.Marshal(&efgsapi.CertificateRequest{
 		Token:   token,
 		KeyHmac: base64.StdEncoding.EncodeToString(hmac),
 	})
@@ -248,7 +249,7 @@ func getCertificate(ctx context.Context, config utils.VerificationServerConfig, 
 		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
 	}
 
-	var r certificateResponse
+	var r efgsapi.CertificateResponse
 	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}

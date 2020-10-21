@@ -7,10 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
+	efgsdatabase "github.com/covid19cz/erouska-backend/internal/functions/efgs/database"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/secrets"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
 	urlutils "net/url"
@@ -29,7 +31,7 @@ type uploadConfiguration struct {
 //UploadBatch Called in CRON every 2 hours. Gets keys from database and upload them to EFGS.
 func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.UploadBatch")
 	now := time.Now()
 	timeFrom := now.AddDate(0, 0, -14).Format("2006-01-02")
 	maxBatchSize, isSet := os.LookupEnv("EFGS_UPLOAD_BATCH_SIZE")
@@ -46,7 +48,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keys, err := Database.GetDiagnosisKeys(timeFrom)
+	keys, err := efgsdatabase.Database.GetDiagnosisKeys(timeFrom)
 	if err != nil {
 		logger.Errorf("Downloading keys error: %s", err)
 		sendErrorResponse(w, err)
@@ -59,7 +61,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var diagnosisKeys []*DiagnosisKey
+	var diagnosisKeys []*efgsapi.DiagnosisKey
 	for _, k := range keys {
 		diagnosisKeys = append(diagnosisKeys, k.ToData())
 	}
@@ -76,7 +78,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	for _, batch := range batches {
 		diagnosisKeyBatch := makeBatch(batch)
 		hash := sha1.New()
-		hash.Write(batchToBytes(&diagnosisKeyBatch))
+		_, _ = hash.Write(batchToBytes(&diagnosisKeyBatch))
 		uploadConfig.BatchTag = now.Format("20060102") + "-" + hex.EncodeToString(hash.Sum(nil))[:7]
 		logger.Debugf("Uploading batch (%d keys) with tag %s", len(batch), uploadConfig.BatchTag)
 
@@ -92,7 +94,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("Batch %s successfully uploaded", uploadConfig.BatchTag)
 	}
 
-	if err := Database.RemoveDiagnosisKey(keys); err != nil {
+	if err := efgsdatabase.Database.RemoveDiagnosisKey(keys); err != nil {
 		logger.Errorf("Removing uploaded keys from database failed: %s", err)
 		sendErrorResponse(w, err)
 		return
@@ -103,7 +105,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadBatchConfiguration(ctx context.Context) (*uploadConfiguration, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Named("efgs.uploadBatchConfiguration")
 	secretsClient := secrets.Client{}
 
 	var err error
@@ -148,8 +150,8 @@ func uploadBatchConfiguration(ctx context.Context) (*uploadConfiguration, error)
 	return &config, nil
 }
 
-func uploadBatch(ctx context.Context, batch *DiagnosisKeyBatch, config *uploadConfiguration) (*uploadBatchResponse, error) {
-	logger := logging.FromContext(ctx)
+func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *uploadConfiguration) (*efgsapi.UploadBatchResponse, error) {
+	logger := logging.FromContext(ctx).Named("efgs.uploadBatch")
 
 	raw, err := proto.Marshal(batch)
 	if err != nil {
@@ -218,7 +220,7 @@ func uploadBatch(ctx context.Context, batch *DiagnosisKeyBatch, config *uploadCo
 		logger.Infof("%d keys (tag: %s) successfully uploaded", len(batch.Keys), config.BatchTag)
 		return nil, nil
 	case 207:
-		var parsedResponse uploadBatchResponse
+		var parsedResponse efgsapi.UploadBatchResponse
 
 		jsonErr := json.Unmarshal(body, &parsedResponse)
 		if jsonErr != nil {
@@ -236,8 +238,8 @@ func uploadBatch(ctx context.Context, batch *DiagnosisKeyBatch, config *uploadCo
 	}
 }
 
-func filterInvalidDiagnosisKeys(ctx context.Context, resp *uploadBatchResponse, keys []*DiagnosisKeyWrapper) []*DiagnosisKeyWrapper {
-	logger := logging.FromContext(ctx)
+func filterInvalidDiagnosisKeys(ctx context.Context, resp *efgsapi.UploadBatchResponse, keys []*efgsapi.DiagnosisKeyWrapper) []*efgsapi.DiagnosisKeyWrapper {
+	logger := logging.FromContext(ctx).Named("efgs.filterInvalidDiagnosisKeys")
 	var filteredKeys = keys
 
 	logger.Debugf("Part of batch was successfully uploaded")
@@ -247,9 +249,9 @@ func filterInvalidDiagnosisKeys(ctx context.Context, resp *uploadBatchResponse, 
 	return filteredKeys
 }
 
-func splitBatch(buf []*DiagnosisKey, lim int) [][]*DiagnosisKey {
-	var chunk []*DiagnosisKey
-	chunks := make([][]*DiagnosisKey, 0, len(buf)/lim+1)
+func splitBatch(buf []*efgsapi.DiagnosisKey, lim int) [][]*efgsapi.DiagnosisKey {
+	var chunk []*efgsapi.DiagnosisKey
+	chunks := make([][]*efgsapi.DiagnosisKey, 0, len(buf)/lim+1)
 
 	for len(buf) >= lim {
 		chunk, buf = buf[:lim], buf[lim:]

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/functions/efgs"
+	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
+	efgsdatabase "github.com/covid19cz/erouska-backend/internal/functions/efgs/database"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/pkg/api/v1"
@@ -70,12 +72,12 @@ func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
 		visitedCountries = defaultVisitedCountries
 	}
 
-	var keys []*efgs.DiagnosisKey
+	var keys []*efgsapi.DiagnosisKey
 	for _, k := range request.Keys {
 		keys = append(keys, efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, request.SymptomOnsetInterval))
 	}
 
-	return efgs.Database.PersistDiagnosisKeys(keys)
+	return efgsdatabase.Database.PersistDiagnosisKeys(keys)
 }
 
 func passToKeyServer(ctx context.Context, request *v1.PublishKeysRequestServer) (*v1.PublishKeysResponseServer, error) {

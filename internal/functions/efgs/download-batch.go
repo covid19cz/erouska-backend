@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/pubsub"
@@ -25,7 +26,7 @@ type config struct {
 
 //DownloadAndSaveKeys Downloads batch from EFGS.
 func DownloadAndSaveKeys(ctx context.Context, m pubsub.Message) error {
-	var payload BatchDownloadParams
+	var payload efgsapi.BatchDownloadParams
 
 	if decodeErr := pubsub.DecodeJSONEvent(m, &payload); decodeErr != nil {
 		return fmt.Errorf("Error while parsing event payload: %v", decodeErr)
@@ -38,7 +39,7 @@ func DownloadAndSaveKeys(ctx context.Context, m pubsub.Message) error {
 func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	err := downloadAndSaveKeysBatch(ctx, BatchDownloadParams{
+	err := downloadAndSaveKeysBatch(ctx, efgsapi.BatchDownloadParams{
 		Date: time.Now().Add(time.Hour * -24).Format("20060102"),
 	})
 
@@ -47,7 +48,7 @@ func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func downloadAndSaveKeysBatch(ctx context.Context, params BatchDownloadParams) error {
+func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadParams) error {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAndSaveKeysBatch")
 
 	logger.Debugf("About to download batch with tag '%v' for date %v!", params.BatchTag, params.Date)
@@ -83,7 +84,7 @@ func downloadAndSaveKeysBatch(ctx context.Context, params BatchDownloadParams) e
 	return nil
 }
 
-func publishAllKeys(ctx context.Context, config *config, keys []*DiagnosisKey) error {
+func publishAllKeys(ctx context.Context, config *config, keys []*efgsapi.DiagnosisKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.publishAllKeys")
 
 	logger.Debugf("About to sort downloaded keys")
@@ -114,7 +115,7 @@ func publishAllKeys(ctx context.Context, config *config, keys []*DiagnosisKey) e
 	return nil
 }
 
-func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]*DiagnosisKey, error) {
+func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]*efgsapi.DiagnosisKey, error) {
 	logger := logging.FromContext(ctx).Named("efgs.downloadBatchByTag")
 	secretsClient := secrets.Client{}
 
@@ -201,14 +202,14 @@ func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]*D
 		return nil, fmt.Errorf("HTTP %v: %v", resp.StatusCode, string(body))
 	}
 
-	var batchResponse downloadBatchResponse
+	var batchResponse efgsapi.DownloadBatchResponse
 
 	if err = json.Unmarshal(body, &batchResponse); err != nil {
 		logger.Errorf("Download response parsing error: %v", err)
 		return nil, err
 	}
 
-	var keys []*DiagnosisKey
+	var keys []*efgsapi.DiagnosisKey
 
 	for _, ent := range batchResponse.Keys {
 		keys = append(keys, ent.ToData())
