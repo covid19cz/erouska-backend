@@ -29,6 +29,7 @@ locals {
 
   publishkeys_roles = [
     "roles/cloudfunctions.serviceAgent",
+    "roles/secretmanager.secretAccessor",
   ]
 
   getcoviddata_roles = [
