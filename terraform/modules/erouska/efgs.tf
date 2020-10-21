@@ -22,14 +22,14 @@ locals {
 
   # DownloadYesterdaysKeys
 
-  efgsdownloadyesterdayskeys_roles = [
+  efgsdownyestkeys_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/secretmanager.secretAccessor",
   ]
 
   # DownloadYesterdaysKeys - invoker
 
-  efgsdownloadyesterdayskeys_invoker_roles = [
+  efgsdownyestkeys_invoker_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/iam.serviceAccountUser"
   ]
@@ -106,37 +106,37 @@ resource "google_project_iam_member" "efgsdownloadkeys" {
 
 # DownloadYesterdaysKeys
 
-data "google_cloudfunctions_function" "efgsdownloadyesterdayskeys" {
+data "google_cloudfunctions_function" "efgsdownyestkeys" {
   name    = "EfgsDownloadYesterdaysKeys"
   project = var.project
 }
 
-resource "google_service_account" "efgsdownloadyesterdayskeys" {
+resource "google_service_account" "efgsdownyestkeys" {
   account_id   = "efgs-download-yesterdays-keys"
   display_name = "EfgsDownloadYesterdaysKeys cloud function service account"
 }
 
-resource "google_project_iam_member" "efgsdownloadyesterdayskeys" {
-  count  = length(local.efgsdownloadyesterdayskeys_roles)
-  role   = local.efgsdownloadyesterdayskeys_roles[count.index]
-  member = "serviceAccount:${google_service_account.efgsdownloadyesterdayskeys.email}"
+resource "google_project_iam_member" "efgsdownyestkeys" {
+  count  = length(local.efgsdownyestkeys_roles)
+  role   = local.efgsdownyestkeys_roles[count.index]
+  member = "serviceAccount:${google_service_account.efgsdownyestkeys.email}"
 }
 
 # DownloadYesterdaysKeys - invoker
 
-resource "google_service_account" "efgsdownloadyesterdayskeys-invoker" {
-  account_id   = "efgsdownloadyesterdayskeys-invoker-sa"
+resource "google_service_account" "efgsdownyestkeys-invoker" {
+  account_id   = "efgsdownyestkeys-invoker-sa"
   display_name = "EfgsDownloadYesterdaysKeys invoker"
 }
 
-resource "google_project_iam_member" "efgsdownloadyesterdayskeys-invoker" {
-  count  = length(local.efgsdownloadyesterdayskeys_invoker_roles)
-  role   = local.efgsdownloadyesterdayskeys_invoker_roles[count.index]
-  member = "serviceAccount:${google_service_account.efgsdownloadyesterdayskeys-invoker.email}"
+resource "google_project_iam_member" "efgsdownyestkeys-invoker" {
+  count  = length(local.efgsdownyestkeys_invoker_roles)
+  role   = local.efgsdownyestkeys_invoker_roles[count.index]
+  member = "serviceAccount:${google_service_account.efgsdownyestkeys-invoker.email}"
 }
 
-resource "google_cloud_scheduler_job" "efgsdownloadyesterdayskeys-worker" {
-  name             = "efgsdownloadyesterdayskeys-worker"
+resource "google_cloud_scheduler_job" "efgsdownyestkeys-worker" {
+  name             = "efgsdownyestkeys-worker"
   region           = var.cloudscheduler_location
   schedule         = "0 5 * * *"
   time_zone        = "Europe/Prague"
@@ -148,10 +148,10 @@ resource "google_cloud_scheduler_job" "efgsdownloadyesterdayskeys-worker" {
 
   http_target {
     http_method = "GET"
-    uri         = data.google_cloudfunctions_function.efgsdownloadyesterdayskeys.https_trigger_url
+    uri         = data.google_cloudfunctions_function.efgsdownyestkeys.https_trigger_url
     oidc_token {
-      audience              = data.google_cloudfunctions_function.efgsdownloadyesterdayskeys.https_trigger_url
-      service_account_email = google_service_account.efgsdownloadyesterdayskeys-invoker.email
+      audience              = data.google_cloudfunctions_function.efgsdownyestkeys.https_trigger_url
+      service_account_email = google_service_account.efgsdownyestkeys-invoker.email
     }
   }
 
