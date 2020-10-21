@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/firestore v1.2.0
 	cloud.google.com/go/pubsub v1.3.1
 	firebase.google.com/go v3.13.0+incompatible
+	firebase.google.com/go/v4 v4.0.0 // indirect
 	github.com/GoogleCloudPlatform/cloudsql-proxy v1.18.0
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/go-pg/pg/v10 v10.3.2
