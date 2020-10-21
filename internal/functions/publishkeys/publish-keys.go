@@ -16,7 +16,7 @@ import (
 
 const countryOfOrigin = "CZ"
 
-var defaultVisitedCountries = []string{"DE", "AT"} // TODO // this could be a constant but we're in fckn Go
+var defaultVisitedCountries = []string{"AT", "DE", "DK", "ES", "IE", "NL", "PL"} // this could be a constant but we're in fckn Go
 
 //PublishKeys Handler
 func PublishKeys(w http.ResponseWriter, r *http.Request) {
