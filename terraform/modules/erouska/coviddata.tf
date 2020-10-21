@@ -19,7 +19,7 @@ locals {
     "roles/cloudfunctions.serviceAgent",
     "roles/datastore.viewer",
     "roles/firebasedatabase.viewer",
-    "roles/monitoring.timeSeries.list"
+    "roles/monitoring.viewer"
   ]
 
   downloadmetrics_roles = [
