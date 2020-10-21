@@ -7,6 +7,9 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 )
 
+//EhridRegex Regex for eHrid.
+const EhridRegex = `e[A-Z]{6}[0-9]{3}`
+
 //SeededRand Seeded random
 var SeededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 

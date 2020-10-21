@@ -3,6 +3,9 @@ package constants
 //CollectionRegistrations Name of the collection.
 const CollectionRegistrations = "registrations_v2"
 
+//CollectionRegistrationsV1 Name of the collection.
+const CollectionRegistrationsV1 = "registrations"
+
 //CollectionDailyNotificationAttemptsEhrid Name of the collection.
 const CollectionDailyNotificationAttemptsEhrid = "dailyNotificationAttemptsEhrid"
 
