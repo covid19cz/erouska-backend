@@ -17,17 +17,17 @@ var projectID string
 func init() {
 	ctx := context.Background()
 
-	projectID_, ok := os.LookupEnv("PROJECT_ID")
+	projectIDtmp, ok := os.LookupEnv("PROJECT_ID")
 	if !ok {
 		panic("PROJECT_ID env must be configured!")
 	}
 
-	if projectID_ == "NOOP" {
+	if projectIDtmp == "NOOP" {
 		log.Printf("Mocking Secrets Manager")
 		return
 	}
 
-	projectID = projectID_ // Fuck you, Go!
+	projectID = projectIDtmp // Fuck you, Go!
 
 	var err error
 	SecretsManagerClient, err = secretmanager.NewClient(ctx)
