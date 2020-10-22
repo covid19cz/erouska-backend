@@ -14,9 +14,6 @@ module "erouska" {
   appengine_location      = var.appengine_location
 }
 
-
-resource "null_resource" "exdawample" {}
-
 provider "google" {
   project = var.project
   region  = var.region
