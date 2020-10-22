@@ -73,6 +73,8 @@ locals {
 
 }
 
+resource "null_resource" "example" {}
+
 data "google_cloudfunctions_function" "downloadcovid" {
   name    = "DownloadCovidDataTotal"
   project = var.project
