@@ -40,7 +40,7 @@ func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	err := downloadAndSaveKeysBatch(ctx, efgsapi.BatchDownloadParams{
-		Date: time.Now().Add(time.Hour * -24).Format("20060102"),
+		Date: time.Now().Add(time.Hour * -24).Format("2006-01-02"),
 	})
 
 	if err != nil {
@@ -51,7 +51,7 @@ func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadParams) error {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAndSaveKeysBatch")
 
-	logger.Debugf("About to download batch with tag '%v' for date %v!", params.BatchTag, params.Date)
+	logger.Infof("About to download batch with tag '%v' for date %v!", params.BatchTag, params.Date)
 
 	config, err := loadConfig(ctx)
 	if err != nil {
@@ -68,7 +68,7 @@ func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadP
 	}
 
 	if len(keys) == 0 {
-		logger.Warnf("No keys returned from EFGS for date %v and batchTag '%v'", params.Date, params.BatchTag)
+		logger.Infof("No keys returned from EFGS for date %v and batchTag '%v'", params.Date, params.BatchTag)
 		return nil
 	}
 
@@ -98,18 +98,25 @@ func publishAllKeys(ctx context.Context, config *config, keys []efgsapi.Diagnosi
 
 	logger.Infof("Sorted downloaded keys into %v groups (countries)", len(sortedKeys))
 
+	var errors []string
+
 	for country, countryKeys := range sortedKeys {
 		haid, exists := config.HaidMappings[country]
 		if !exists {
-			return fmt.Errorf("HAID mapping for %v doesn't exist", country)
+			errors = append(errors, fmt.Sprintf("Keys from %v were provided but HAID mapping doesn't exist!", country))
+			continue
 		}
 
-		logger.Debugf("Uploading %v keys from %v to our Key server", len(countryKeys), country)
+		logger.Infof("Uploading %v keys from %v to our Key server", len(countryKeys), country)
 
 		if err := PublishKeysToKeyServer(ctx, haid, config.MaxBatchSize, countryKeys); err != nil {
-			logger.Debugf("Could not upload keys from '%v' country", country)
-			return err
+			errors = append(errors, fmt.Sprintf("Could not upload keys from %v country", country))
+			continue
 		}
+	}
+
+	if len(errors) != 0 {
+		return fmt.Errorf("Following errors have happened:\n%v", strings.Join(errors, "\n"))
 	}
 
 	return nil
