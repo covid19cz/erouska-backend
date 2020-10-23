@@ -112,6 +112,8 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		CuredTotal:                 totalsData.CuredTotal,
 		DeceasedTotal:              totalsData.DeceasedTotal,
 		CurrentlyHospitalizedTotal: totalsData.CurrentlyHospitalizedTotal,
+		TestsIncreaseDate:          totalsData.TestsIncreaseDate,
+		ConfirmedCasesIncreaseDate: totalsData.ConfirmedCasesIncreaseDate,
 	}
 
 	httputils.SendResponse(w, r, res)

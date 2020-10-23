@@ -33,6 +33,8 @@ type TotalsData struct {
 	CurrentlyHospitalizedTotal int    `json:"aktualne_hospitalizovani"  validate:"required"`
 	TestsIncrease              int    `json:"provedene_testy_vcerejsi_den" validate:"required"`
 	ConfirmedCasesIncrease     int    `json:"potvrzene_pripady_vcerejsi_den" validate:"required"`
+	TestsIncreaseDate          string `json:"provedene_testy_vcerejsi_den_datum" validate:"required"`
+	ConfirmedCasesIncreaseDate string `json:"potvrzene_pripady_vcerejsi_den_datum" validate:"required"`
 }
 
 // TotalsDataFields are wrapped TotalsData from firestore response
@@ -46,6 +48,8 @@ type TotalsDataFields struct {
 	CurrentlyHospitalizedTotal structs.IntegerValue `json:"currentlyHospitalizedTotal"  validate:"required"`
 	TestsIncrease              structs.IntegerValue `json:"testsIncrease" validate:"required"`
 	ConfirmedCasesIncrease     structs.IntegerValue `json:"confirmedCasesIncrease" validate:"required"`
+	TestsIncreaseDate          structs.StringValue  `json:"provedene_testy_vcerejsi_den_datum" validate:"required"`
+	ConfirmedCasesIncreaseDate structs.StringValue  `json:"potvrzene_pripady_vcerejsi_den_datum" validate:"required"`
 }
 
 // HTTPClient interface for mocking fetchData
@@ -95,11 +99,12 @@ func fetchData(client HTTPClient) (*TotalsData, error) {
 	if date == "" {
 		date = utils.GetTimeNow().Format("20060102")
 	} else {
-		// convert 2020-08-19 to 20200819
-		date = strings.ReplaceAll(date, "-", "")
+		date = reformatDate(date)
 	}
 
 	data.Date = date
+	data.ConfirmedCasesIncreaseDate = reformatDate(data.ConfirmedCasesIncreaseDate)
+	data.TestsIncreaseDate = reformatDate(data.TestsIncreaseDate)
 
 	return &data, nil
 }
@@ -133,4 +138,12 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 	logger.Infof("Successfully written totals data to firestore (key %v): %+v", date, totalsData)
 
 	httputils.SendResponse(w, r, struct{ status string }{status: "OK"})
+}
+
+// convert 2020-08-19 to 20200819
+func reformatDate(date string) string {
+	if date == "" {
+		return ""
+	}
+	return strings.ReplaceAll(date, "-", "")
 }
