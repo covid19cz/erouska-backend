@@ -62,6 +62,8 @@ func init() {
 			panic(fmt.Sprintf("Error while creating DB schema: %s", err))
 		}
 
+		logger.Debug("EFGS database initialized")
+
 		return connection
 	}
 

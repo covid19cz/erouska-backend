@@ -16,7 +16,10 @@ import (
 	"net/http"
 )
 
-const countryOfOrigin = "CZ"
+const (
+	countryOfOrigin              = "CZ"
+	defaultTransmissionRiskLevel = 2 // see docs for ExposureKey - "CONFIRMED will lead to TR 2"
+)
 
 var defaultVisitedCountries = []string{"AT", "DE", "DK", "ES", "IE", "NL", "PL"} // this could be a constant but we're in fckn Go
 
@@ -50,6 +53,8 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		logger.Infof("Successfully uploaded %v keys to Key server (%v keys sent)", serverResponse.InsertedExposures, len(serverRequest.Keys))
 
 		if request.ConsentToFederation {
+			logger.Debug("Going to save uploaded keys to EFSG database")
+
 			if err = handleKeysUpload(request); err != nil {
 				logger.Errorf("Error while processing keys persistence: %v", err)
 			} else {
@@ -74,7 +79,11 @@ func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
 
 	var keys []*efgsapi.DiagnosisKey
 	for _, k := range request.Keys {
-		keys = append(keys, efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, request.SymptomOnsetInterval))
+		diagnosisKey := efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, request.SymptomOnsetInterval)
+		if diagnosisKey.TransmissionRiskLevel == 0 {
+			diagnosisKey.TransmissionRiskLevel = defaultTransmissionRiskLevel
+		}
+		keys = append(keys, diagnosisKey)
 	}
 
 	return efgsdatabase.Database.PersistDiagnosisKeys(keys)

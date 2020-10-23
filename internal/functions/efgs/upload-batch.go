@@ -56,8 +56,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(keys) <= 0 {
-		logger.Warn("No new keys in database")
-		sendErrorResponse(w, errors.New("no new keys in database"))
+		logger.Info("No new keys in database")
 		return
 	}
 
@@ -101,7 +100,6 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Infof("%d keys (in %d batches) successfully uploaded", len(keys), len(batches))
-	w.WriteHeader(200)
 }
 
 func uploadBatchConfiguration(ctx context.Context) (*uploadConfiguration, error) {

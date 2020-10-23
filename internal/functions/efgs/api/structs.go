@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/base64"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,7 +51,40 @@ type CertificateResponse struct {
 
 //DownloadBatchResponse Response for download batch call to EFGS
 type DownloadBatchResponse struct {
-	Keys []DiagnosisKeyWrapper `json:"keys"`
+	Keys []DiagnosisKey `json:"keys"`
+}
+
+var mapReportTypeInt = map[int]ReportType{
+	0: ReportType_UNKNOWN,
+	1: ReportType_CONFIRMED_TEST,
+	2: ReportType_CONFIRMED_CLINICAL_DIAGNOSIS,
+	3: ReportType_SELF_REPORT,
+	4: ReportType_RECURSIVE,
+	5: ReportType_REVOKED,
+}
+
+var mapReportTypeString = map[string]ReportType{
+	"UNKNOWN":                      ReportType_UNKNOWN,
+	"CONFIRMED_TEST":               ReportType_CONFIRMED_TEST,
+	"CONFIRMED_CLINICAL_DIAGNOSIS": ReportType_CONFIRMED_CLINICAL_DIAGNOSIS,
+	"SELF_REPORT":                  ReportType_SELF_REPORT,
+	"RECURSIVE":                    ReportType_RECURSIVE,
+	"REVOKED":                      ReportType_REVOKED,
+}
+
+//UnmarshalJSON Accepts ReportType in both integer and string form.
+func (s *ReportType) UnmarshalJSON(data []byte) error {
+	str := strings.TrimLeft(strings.TrimRight(string(data), "\""), "\"")
+
+	number, err := strconv.Atoi(str)
+
+	if err == nil {
+		*s = mapReportTypeInt[number]
+	} else {
+		*s = mapReportTypeString[str]
+	}
+
+	return nil
 }
 
 //UploadBatchResponse Response for upload batch call to EFGS
@@ -82,15 +117,6 @@ type DiagnosisKeyWrapper struct {
 
 //ToData convert struct from DiagnosisKeyWrapper to DiagnosisKey
 func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
-	var mapReportType = map[int]ReportType{
-		0: ReportType_UNKNOWN,
-		1: ReportType_CONFIRMED_TEST,
-		2: ReportType_CONFIRMED_CLINICAL_DIAGNOSIS,
-		3: ReportType_SELF_REPORT,
-		4: ReportType_RECURSIVE,
-		5: ReportType_REVOKED,
-	}
-
 	return &DiagnosisKey{
 		KeyData:                    wrappedKey.KeyData,
 		RollingStartIntervalNumber: wrappedKey.RollingStartIntervalNumber,
@@ -99,7 +125,7 @@ func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
 		Origin:                     wrappedKey.Origin,
 		DaysSinceOnsetOfSymptoms:   wrappedKey.DaysSinceOnsetOfSymptoms,
 		VisitedCountries:           wrappedKey.VisitedCountries,
-		ReportType:                 mapReportType[wrappedKey.ReportType],
+		ReportType:                 mapReportTypeInt[wrappedKey.ReportType],
 	}
 }
 
