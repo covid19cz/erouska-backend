@@ -98,13 +98,13 @@ func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
 	return nil
 }
 
-//GetDiagnosisKeys Get keys from the DB that are not yet in EFGS and are not older than dateFrom.
-func (db Connection) GetDiagnosisKeys(dateFrom time.Time) ([]*efgsapi.DiagnosisKeyWrapper, error) {
+//GetDiagnosisKeys Get keys from the DB that are not yet in EFGS and are not older than dateUntil.
+func (db Connection) GetDiagnosisKeys(dateUntil time.Time) ([]*efgsapi.DiagnosisKeyWrapper, error) {
 	connection := db.inner().Conn()
 	defer connection.Close()
 
 	var keys []*efgsapi.DiagnosisKeyWrapper
-	if err := connection.Model(&keys).Where("created_at >= ?", dateFrom.Format("2006-01-02")).Select(); err != nil {
+	if err := connection.Model(&keys).Where("created_at >= ?", dateUntil.Format("2006-01-02")).Select(); err != nil {
 		return nil, err
 	}
 
@@ -143,6 +143,19 @@ func (db Connection) RemoveInvalidKeys(keys []*efgsapi.DiagnosisKeyWrapper) erro
 	defer connection.Close()
 
 	_, err := connection.Model(&keys).Where("retries >= 2").Delete()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//RemoveOldKeys Removes keys older than date provided as parameter.
+func (db Connection) RemoveOldKeys(dateFrom string) error {
+	connection := db.inner().Conn()
+	defer connection.Close()
+
+	_, err := connection.Model(&efgsapi.DiagnosisKeyWrapper{}).Where("created_at < ?", dateFrom).Delete()
 	if err != nil {
 		return err
 	}

@@ -34,6 +34,21 @@ locals {
     "roles/cloudfunctions.serviceAgent",
     "roles/iam.serviceAccountUser"
   ]
+
+  # RemoveOldKeys
+
+  efgsremoveoldkeys_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/secretmanager.secretAccessor",
+    "roles/cloudsql.editor",
+  ]
+
+  # RemoveOldKeys - invoker
+
+  efgsremoveoldkeys_invoker_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/iam.serviceAccountUser"
+  ]
 }
 
 # UploadKeys
@@ -153,6 +168,62 @@ resource "google_cloud_scheduler_job" "efgsdownyestkeys-worker" {
     oidc_token {
       audience              = data.google_cloudfunctions_function.efgsdownyestkeys.https_trigger_url
       service_account_email = google_service_account.efgsdownyestkeys-invoker.email
+    }
+  }
+
+  depends_on = [
+    google_project_service.services["cloudscheduler.googleapis.com"],
+  ]
+}
+
+# RemoveOldKeys
+
+data "google_cloudfunctions_function" "efgsremoveoldkeys" {
+  name    = "EfgsRemoveOldKeys"
+  project = var.project
+}
+
+resource "google_service_account" "efgsremoveoldkeys" {
+  account_id   = "efgs-remove-old-keys"
+  display_name = "EfgsRemoveOldKeys cloud function service account"
+}
+
+resource "google_project_iam_member" "efgsremoveoldkeys" {
+  count  = length(local.efgsremoveoldkeys_roles)
+  role   = local.efgsremoveoldkeys_roles[count.index]
+  member = "serviceAccount:${google_service_account.efgsremoveoldkeys.email}"
+}
+
+# RemoveOldKeys - invoker
+
+resource "google_service_account" "efgsremoveoldkeys-invoker" {
+  account_id   = "efgsremoveoldkeys-invoker-sa"
+  display_name = "EfgsRemoveOldKeys invoker"
+}
+
+resource "google_project_iam_member" "efgsremoveoldkeys-invoker" {
+  count  = length(local.efgsremoveoldkeys_invoker_roles)
+  role   = local.efgsremoveoldkeys_invoker_roles[count.index]
+  member = "serviceAccount:${google_service_account.efgsremoveoldkeys-invoker.email}"
+}
+
+resource "google_cloud_scheduler_job" "efgsremoveoldkeys-worker" {
+  name             = "efgsremoveoldkeys-worker"
+  region           = var.cloudscheduler_location
+  schedule         = "0 6 * * *"
+  time_zone        = "Europe/Prague"
+  attempt_deadline = "600s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "GET"
+    uri         = data.google_cloudfunctions_function.efgsremoveoldkeys.https_trigger_url
+    oidc_token {
+      audience              = data.google_cloudfunctions_function.efgsremoveoldkeys.https_trigger_url
+      service_account_email = google_service_account.efgsremoveoldkeys-invoker.email
     }
   }
 

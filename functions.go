@@ -89,3 +89,8 @@ func EfgsDownloadKeys(ctx context.Context, m pubsub.Message) error {
 func EfgsDownloadYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	efgs.DownloadAndSaveYesterdaysKeys(w, r)
 }
+
+//EfgsRemoveOldKeys handler.
+func EfgsRemoveOldKeys(w http.ResponseWriter, r *http.Request) {
+	efgs.CleanupDatabase(w, r)
+}
