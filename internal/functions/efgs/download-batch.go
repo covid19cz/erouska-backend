@@ -84,7 +84,7 @@ func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadP
 	return nil
 }
 
-func publishAllKeys(ctx context.Context, config *config, keys []*efgsapi.DiagnosisKey) error {
+func publishAllKeys(ctx context.Context, config *config, keys []efgsapi.DiagnosisKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.publishAllKeys")
 
 	logger.Debugf("About to sort downloaded keys")
@@ -115,7 +115,7 @@ func publishAllKeys(ctx context.Context, config *config, keys []*efgsapi.Diagnos
 	return nil
 }
 
-func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]*efgsapi.DiagnosisKey, error) {
+func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
 	logger := logging.FromContext(ctx).Named("efgs.downloadBatchByTag")
 	secretsClient := secrets.Client{}
 
@@ -138,7 +138,7 @@ func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]*e
 
 	var efgsRootURL []byte
 	if connectToLocal {
-		efgsRootURL, err = secretsClient.Get("efgs-local-url")
+		efgsRootURL, err = secretsClient.Get("efgs-test-url")
 	} else {
 		efgsRootURL, err = secretsClient.Get("efgs-root-url")
 	}
@@ -205,15 +205,11 @@ func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]*e
 	var batchResponse efgsapi.DownloadBatchResponse
 
 	if err = json.Unmarshal(body, &batchResponse); err != nil {
-		logger.Errorf("Download response parsing error: %v", err)
+		logger.Debugf("Download response parsing error: %v, body: %v", err, string(body))
 		return nil, err
 	}
 
-	var keys []*efgsapi.DiagnosisKey
-
-	for _, ent := range batchResponse.Keys {
-		keys = append(keys, ent.ToData())
-	}
+	keys := batchResponse.Keys
 
 	if len(resp.Header.Get("nextBatchTag")) > 0 && resp.Header.Get("nextBatchTag") != "null" {
 		batch, err := downloadBatchByTag(ctx, date, resp.Header.Get("nextBatchTag"))
