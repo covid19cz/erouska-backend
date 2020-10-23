@@ -177,7 +177,7 @@ steps:
     - --runtime=go113
     - --memory=128
     - --service-account=efgs-download-keys@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},EFGS_LOCAL=true
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_LOCAL=true
 - name: 'gcr.io/cloud-builders/gcloud'
   waitFor: ['-']
   args:
@@ -190,4 +190,4 @@ steps:
     - --runtime=go113
     - --memory=128
     - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},EFGS_LOCAL=true
+    - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_LOCAL=true
