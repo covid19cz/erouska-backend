@@ -62,4 +62,6 @@ type GetCovidDataResponse struct {
 	CuredTotal                    int    `json:"curedTotal"  validate:"required"`
 	DeceasedTotal                 int    `json:"deceasedTotal"  validate:"required"`
 	CurrentlyHospitalizedTotal    int    `json:"currentlyHospitalizedTotal"  validate:"required"`
+	TestsIncreaseDate             string `json:"testsIncreaseDate" validate:"required"`
+	ConfirmedCasesIncreaseDate    string `json:"confirmedCasesIncreaseDate" validate:"required"`
 }
