@@ -3,7 +3,23 @@ name: terraform
 on: [pull_request]
 
 jobs:
-  terraform:
+  tf-fmt:
+    runs-on: ubuntu-latest
+    name: Check terraform file are formatted correctly
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: terraform fmt dev
+        uses: dflook/terraform-fmt-check@v1
+        with:
+          path: terraform/dev
+
+      - name: terraform fmt prod
+        uses: dflook/terraform-fmt-check@v1
+        with:
+          path: terraform/prod
+  tf-validate:
     runs-on: ubuntu-latest
     name: Validate terraform
     steps:
