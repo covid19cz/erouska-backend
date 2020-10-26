@@ -6,5 +6,15 @@ projects:
   terraform_version: v0.13.4
   autoplan:
     enabled: true
-# - name: prod
-#   dir: terraform/prod
+- name: ci
+  dir: terraform/ci
+  workspace: default
+  terraform_version: v0.13.4
+  autoplan:
+    enabled: true
+- name: prod
+  dir: terraform/prod
+  workspace: default
+  terraform_version: v0.13.4
+  autoplan:
+    enabled: true
