@@ -29,7 +29,7 @@ locals {
 
   publishkeys_roles = [
     "roles/cloudfunctions.serviceAgent",
-    "roles/secretmanager.secretAccessor",,
+    "roles/secretmanager.secretAccessor",
     "roles/cloudsql.editor"
   ]
 
