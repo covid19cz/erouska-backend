@@ -10,8 +10,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: terraform validate
+      - name: terraform validate dev
         uses: dflook/terraform-validate@v1
         with:
           path: terraform/dev
 
+      - name: terraform validate prod
+        uses: dflook/terraform-validate@v1
+        with:
+          path: terraform/prod
