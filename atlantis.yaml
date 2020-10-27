@@ -6,15 +6,11 @@ projects:
     terraform_version: v0.13.4
     autoplan:
       enabled: true
-  - name: ci
-    dir: terraform/ci
-    workspace: default
-    terraform_version: v0.13.4
-    autoplan:
-      enabled: true
+      when_modified: ["*.tf", "../modules/**.tf"]
   - name: prod
     dir: terraform/prod
     workspace: default
     terraform_version: v0.13.4
     autoplan:
       enabled: true
+      when_modified: ["*.tf", "../modules/**.tf"]
