@@ -7,6 +7,11 @@ variable "region" {
   default = "us-central1"
 }
 
+variable "image" {
+  type    = string
+  default = "runatlantis/atlantis:v0.15.1"
+}
+
 variable "instance_name" {
   description = "The desired name to assign to the deployed instance"
 }

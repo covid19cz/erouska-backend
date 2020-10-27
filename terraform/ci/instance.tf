@@ -44,25 +44,6 @@ resource "google_compute_instance" "atlantis" {
   }
 }
 
-module "gce-container" {
-  source = "github.com/terraform-google-modules/terraform-google-container-vm"
-  #version = "0.1.0"
-
-  container = {
-    image = "runatlantis/atlantis:v0.15.1"
-    args = [
-      "server",
-      "--atlantis-url=http://${google_compute_address.static.address}",
-      "--gh-user=${var.github_user}",
-      "--gh-token=${var.github_token}",
-      "--gh-webhook-secret=${var.webhook_secret}",
-      "--repo-allowlist=${var.repo_allowlist}",
-    ]
-  }
-
-  restart_policy = "Always"
-}
-
 resource "google_compute_firewall" "ingress-to-instance" {
   name    = "atlantis"
   project = var.project
