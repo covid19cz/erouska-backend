@@ -1,193 +1,194 @@
+---
 steps:
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-  - functions
-  - deploy
-  - RegisterEhrid
-  - --source=.
-  - --trigger-http
-  - --region=europe-west1
-  - --runtime=go113
-  - --memory=128
-  - --allow-unauthenticated
-  - --service-account=register-ehrid@${PROJECT_ID}.iam.gserviceaccount.com
-  - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - RegisterEhridAfterMath
-    - --source=.
-    - --trigger-topic=user-registered
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --allow-unauthenticated
-    - --service-account=register-ehrid-aftermath@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-  - functions
-  - deploy
-  - IsEhridActive
-  - --source=.
-  - --trigger-http
-  - --region=europe-west1
-  - --runtime=go113
-  - --memory=128
-  - --allow-unauthenticated
-  - --service-account=is-ehrid-active@${PROJECT_ID}.iam.gserviceaccount.com
-  - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-  - functions
-  - deploy
-  - ChangePushToken
-  - --source=.
-  - --trigger-http
-  - --region=europe-west1
-  - --runtime=go113
-  - --memory=128
-  - --allow-unauthenticated
-  - --service-account=change-push-token@${PROJECT_ID}.iam.gserviceaccount.com
-  - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - RegisterNotification
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --allow-unauthenticated
-    - --service-account=register-notification@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - RegisterNotificationAfterMath
-    - --source=.
-    - --trigger-topic=notification-registered
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --allow-unauthenticated
-    - --service-account=reg-notification-aftermath@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - DownloadCovidDataTotal
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --service-account=download-covid-data-total@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - GetCovidData
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --allow-unauthenticated
-    - --service-account=get-covid-data@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - PublishKeys
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --allow-unauthenticated
-    - --service-account=publish-keys@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - PrepareNewMetricsVersion
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --allow-unauthenticated
-    - --service-account=prepare-metrics@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL},METRICS_PROJECT_ID=${_METRICS_PROJECT_ID}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - DownloadMetrics
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --allow-unauthenticated
-    - --service-account=download-metrics@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: [ '-' ]
-  args:
-    - functions
-    - deploy
-    - EfgsUploadKeys
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --service-account=efgs-upload-keys@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_UPLOAD_BATCH_SIZE=30,EFGS_LOCAL=true
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - EfgsDownloadKeys
-    - --source=.
-    - --trigger-topic=efgs-download-keys
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --service-account=efgs-download-keys@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_LOCAL=true
-- name: 'gcr.io/cloud-builders/gcloud'
-  waitFor: ['-']
-  args:
-    - functions
-    - deploy
-    - EfgsDownloadYesterdaysKeys
-    - --source=.
-    - --trigger-http
-    - --region=europe-west1
-    - --runtime=go113
-    - --memory=128
-    - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
-    - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_LOCAL=true
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - RegisterEhrid
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=register-ehrid@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - RegisterEhridAfterMath
+      - --source=.
+      - --trigger-topic=user-registered
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=register-ehrid-aftermath@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - IsEhridActive
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=is-ehrid-active@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - ChangePushToken
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=change-push-token@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - RegisterNotification
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=register-notification@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - RegisterNotificationAfterMath
+      - --source=.
+      - --trigger-topic=notification-registered
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=reg-notification-aftermath@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - DownloadCovidDataTotal
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --service-account=download-covid-data-total@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - GetCovidData
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=get-covid-data@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - PublishKeys
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=publish-keys@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - PrepareNewMetricsVersion
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=prepare-metrics@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL},METRICS_PROJECT_ID=${_METRICS_PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - DownloadMetrics
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=download-metrics@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - EfgsUploadKeys
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --service-account=efgs-upload-keys@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_UPLOAD_BATCH_SIZE=30,EFGS_LOCAL=true
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - EfgsDownloadKeys
+      - --source=.
+      - --trigger-topic=efgs-download-keys
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --service-account=efgs-download-keys@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_LOCAL=true
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - EfgsDownloadYesterdaysKeys
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_LOCAL=true
