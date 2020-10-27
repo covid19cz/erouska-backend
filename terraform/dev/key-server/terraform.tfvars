@@ -12,3 +12,4 @@ cloudsql_disk_size_gb    = "16"
 generate_cron_schedule   = "*/15 * * * *"
 cloudsql_max_connections = 10000
 cloudsql_backup_location = "eu"
+project                  = "erouska-key-server-dev"

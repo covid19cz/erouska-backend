@@ -18,3 +18,4 @@ service_environment = {
   }
 }
 redis_cache_size = 1
+project          = "covid19cz"
