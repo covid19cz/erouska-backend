@@ -30,17 +30,17 @@ type X509KeyPair struct {
 }
 
 //LoadX509KeyPair Loads certificate and key pair from Secrets Manager.
-func LoadX509KeyPair(ctx context.Context, certType CertType) (*X509KeyPair, error) {
+func LoadX509KeyPair(ctx context.Context, env Environment, certType CertType) (*X509KeyPair, error) {
 	logger := logging.FromContext(ctx)
 	secretsClient := secrets.Client{}
 
-	certBytes, err := secretsClient.Get(fmt.Sprintf("efgs-%v-cert", certType))
+	certBytes, err := secretsClient.Get(fmt.Sprintf("efgs-%v-%v-cert", env, certType))
 	if err != nil {
 		logger.Fatalf("Error loading '%v' certificate", certType)
 		return nil, err
-
 	}
-	keyBytes, err := secretsClient.Get(fmt.Sprintf("efgs-%v-key", certType))
+
+	keyBytes, err := secretsClient.Get(fmt.Sprintf("efgs-%v-%v-key", env, certType))
 	if err != nil {
 		logger.Fatalf("Error loading '%v' key", certType)
 		return nil, err

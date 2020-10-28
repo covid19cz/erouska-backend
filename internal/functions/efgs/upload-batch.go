@@ -11,7 +11,6 @@ import (
 	efgsdatabase "github.com/covid19cz/erouska-backend/internal/functions/efgs/database"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
-	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
@@ -23,6 +22,7 @@ import (
 
 type uploadConfiguration struct {
 	URL       *urlutils.URL
+	Env       efgsutils.Environment
 	NBTLSPair *efgsutils.X509KeyPair
 	Client    *http.Client
 	BatchTag  string
@@ -104,12 +104,21 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 
 func uploadBatchConfiguration(ctx context.Context) (*uploadConfiguration, error) {
 	logger := logging.FromContext(ctx).Named("efgs.uploadBatchConfiguration")
-	secretsClient := secrets.Client{}
+
+	efgsEnv := efgsutils.GetEfgsEnvironmentOrFail()
+
+	url := efgsutils.GetEfgsURLOrFail(efgsEnv)
+	url.Path = "diagnosiskeys/upload"
 
 	var err error
-	var config uploadConfiguration
+	config := uploadConfiguration{
+		URL: url,
+		Env: efgsEnv,
+	}
 
-	config.NBTLSPair, err = efgsutils.LoadX509KeyPair(ctx, efgsutils.NBTLS)
+	config.Env = efgsEnv
+
+	config.NBTLSPair, err = efgsutils.LoadX509KeyPair(ctx, efgsEnv, efgsutils.NBTLS)
 	if err != nil {
 		logger.Debug("Error loading authentication certificate")
 		return nil, err
@@ -120,30 +129,6 @@ func uploadBatchConfiguration(ctx context.Context) (*uploadConfiguration, error)
 		logger.Debug("Could not create EFGS client")
 		return nil, err
 	}
-
-	// TODO remove while switching to real efgs
-	_, connectToLocal := os.LookupEnv("EFGS_LOCAL")
-
-	var rootURL []byte
-	if connectToLocal {
-		rootURL, err = secretsClient.Get("efgs-test-url")
-	} else {
-		rootURL, err = secretsClient.Get("efgs-root-url")
-	}
-
-	if err != nil {
-		logger.Debug("Error getting EFGS root url from secrets")
-		return nil, err
-	}
-
-	url, err := urlutils.Parse(string(rootURL))
-	if err != nil {
-		logger.Debug("Error parsing EFGS root url from secrets")
-		return nil, err
-	}
-
-	url.Path = "diagnosiskeys/upload"
-	config.URL = url
 
 	return &config, nil
 }
@@ -163,16 +148,13 @@ func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *
 		return nil, err
 	}
 
-	signedBatch, err := signBatch(ctx, batch)
+	signedBatch, err := signBatch(ctx, config.Env, batch)
 	if err != nil {
 		logger.Debug("Batch signing error")
 		return nil, err
 	}
 
-	// TODO remove while switching to real efgs
-	_, connectToLocal := os.LookupEnv("EFGS_LOCAL")
-
-	if connectToLocal {
+	if config.Env == efgsutils.EnvLocal {
 		logger.Debugf("Setting up LOCAL EFGS headers")
 
 		fingerprint, err := efgsutils.GetCertificateFingerprint(ctx, config.NBTLSPair)

@@ -101,10 +101,10 @@ func makeBatch(keys []*efgsapi.DiagnosisKey) efgsapi.DiagnosisKeyBatch {
 	}
 }
 
-func signBatch(ctx context.Context, diagnosisKey *efgsapi.DiagnosisKeyBatch) (string, error) {
+func signBatch(ctx context.Context, efgsEnv efgsutils.Environment, diagnosisKey *efgsapi.DiagnosisKeyBatch) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.signBatch")
 
-	nbbsPair, err := efgsutils.LoadX509KeyPair(ctx, efgsutils.NBBS)
+	nbbsPair, err := efgsutils.LoadX509KeyPair(ctx, efgsEnv, efgsutils.NBBS)
 	if err != nil {
 		logger.Debugf("Error loading authentication certificate: %v", err)
 		return "", err
