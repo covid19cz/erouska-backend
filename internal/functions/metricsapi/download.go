@@ -2,11 +2,10 @@ package metricsapi
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/covid19cz/erouska-backend/internal/constants"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/store"
-	"go.uber.org/zap"
+	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
@@ -23,7 +22,7 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 	data, err := fetchMetrics(ctx, date)
 	if err != nil {
 		logger.Errorf("Error while fetching data: %v", err)
-		http.Error(w, "Error while fetching data", 500)
+		httputils.SendErrorResponse(w, r, err)
 		return
 	}
 
@@ -36,14 +35,14 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 		fallbackData, err := fetchMetrics(ctx, date)
 		if err != nil {
 			logger.Errorf("Error while fetching data: %v", err)
-			http.Error(w, "Error while fetching data", 500)
+			httputils.SendErrorResponse(w, r, err)
 			return
 		}
 
 		data = fallbackData
 	}
 
-	sendResponse(logger, w, data)
+	httputils.SendResponse(w, r, data)
 }
 
 func fetchMetrics(ctx context.Context, date time.Time) (*MetricsData, error) {
@@ -69,20 +68,4 @@ func fetchMetrics(ctx context.Context, date time.Time) (*MetricsData, error) {
 	}
 
 	return &data, nil
-}
-
-func sendResponse(logger *zap.SugaredLogger, w http.ResponseWriter, response *MetricsData) {
-	blob, err := json.Marshal(response)
-	if err != nil {
-		logger.Warnf("Could not serialize response: %v", err)
-		return
-	}
-
-	logger.Debugf("Sending response to: %+v", response)
-
-	_, err = w.Write(blob)
-	if err != nil {
-		logger.Warnf("Could not send response: %v", err)
-		return
-	}
 }
