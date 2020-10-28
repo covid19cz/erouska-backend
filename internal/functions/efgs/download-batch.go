@@ -13,8 +13,6 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	"io/ioutil"
 	"net/http"
-	urlutils "net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -51,6 +49,8 @@ func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadParams) error {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAndSaveKeysBatch")
 
+	efgsEnv := efgsutils.GetEfgsEnvironmentOrFail()
+
 	logger.Infof("About to download batch with tag '%v' for date %v!", params.BatchTag, params.Date)
 
 	config, err := loadConfig(ctx)
@@ -61,7 +61,7 @@ func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadP
 
 	logger.Debugf("Using config: %+v", config)
 
-	keys, err := downloadBatchByTag(ctx, params.Date, params.BatchTag)
+	keys, err := downloadBatchByTag(ctx, efgsEnv, params.Date, params.BatchTag)
 	if err != nil {
 		logger.Errorf("Could not download batch from EFGS: %v", err)
 		return err
@@ -122,11 +122,10 @@ func publishAllKeys(ctx context.Context, config *config, keys []efgsapi.Diagnosi
 	return nil
 }
 
-func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
+func downloadBatchByTag(ctx context.Context, efgsEnv efgsutils.Environment, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
 	logger := logging.FromContext(ctx).Named("efgs.downloadBatchByTag")
-	secretsClient := secrets.Client{}
 
-	nbtlsPair, err := efgsutils.LoadX509KeyPair(ctx, efgsutils.NBTLS)
+	nbtlsPair, err := efgsutils.LoadX509KeyPair(ctx, efgsEnv, efgsutils.NBTLS)
 	if err != nil {
 		logger.Fatalf("Error loading authentication certificate: %v", err)
 		return nil, err
@@ -138,30 +137,10 @@ func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]ef
 		return nil, err
 	}
 
-	var req *http.Request
-
-	// TODO remove while switching to real efgs
-	_, connectToLocal := os.LookupEnv("EFGS_LOCAL")
-
-	var efgsRootURL []byte
-	if connectToLocal {
-		efgsRootURL, err = secretsClient.Get("efgs-test-url")
-	} else {
-		efgsRootURL, err = secretsClient.Get("efgs-root-url")
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	url, err := urlutils.Parse(string(efgsRootURL))
-	if err != nil {
-		return nil, err
-	}
-
+	url := efgsutils.GetEfgsURLOrFail(efgsEnv)
 	url.Path = "diagnosiskeys/download/" + date
 
-	req, err = http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
 		logger.Error("Error creating download request")
 		return nil, err
@@ -172,7 +151,7 @@ func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]ef
 		req.Header.Set("batchTag", batchTag)
 	}
 
-	if connectToLocal {
+	if efgsEnv == efgsutils.EnvLocal {
 		logger.Debugf("Setting up LOCAL EFGS headers")
 
 		fingerprint, err := efgsutils.GetCertificateFingerprint(ctx, nbtlsPair)
@@ -219,7 +198,7 @@ func downloadBatchByTag(ctx context.Context, date string, batchTag string) ([]ef
 	keys := batchResponse.Keys
 
 	if len(resp.Header.Get("nextBatchTag")) > 0 && resp.Header.Get("nextBatchTag") != "null" {
-		batch, err := downloadBatchByTag(ctx, date, resp.Header.Get("nextBatchTag"))
+		batch, err := downloadBatchByTag(ctx, efgsEnv, date, resp.Header.Get("nextBatchTag"))
 		if err != nil {
 			return nil, err
 		}
