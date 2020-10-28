@@ -97,6 +97,20 @@ locals {
     "roles/secretmanager.secretAccessor",
     "roles/cloudsql.editor"
   ]
+
+  # SendWakeUpSignal
+
+  sendwakeupsignal_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/firebasenotifications.admin"
+  ]
+
+  # SendWakeUpSignal - invoker
+
+  sendwakeupsignal_invoker_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/iam.serviceAccountUser"
+  ]
 }
 
 # RegisterEhrid
@@ -327,4 +341,60 @@ resource "google_project_iam_member" "publishkeys" {
   count  = length(local.publishkeys_roles)
   role   = local.publishkeys_roles[count.index]
   member = "serviceAccount:${google_service_account.publishkeys.email}"
+}
+
+# SendWakeUpSignal
+
+data "google_cloudfunctions_function" "sendwakeupsignal" {
+  name    = "SendWakeUpSignal"
+  project = var.project
+}
+
+resource "google_service_account" "sendwakeupsignal" {
+  account_id   = "send-wakeup-signal"
+  display_name = "SendWakeUpSignal cloud function service account"
+}
+
+resource "google_project_iam_member" "sendwakeupsignal" {
+  count  = length(local.sendwakeupsignal_roles)
+  role   = local.sendwakeupsignal_roles[count.index]
+  member = "serviceAccount:${google_service_account.sendwakeupsignal.email}"
+}
+
+# SendWakeUpSignal - invoker
+
+resource "google_service_account" "sendwakeupsignal-invoker" {
+  account_id   = "sendwakeupsignal-invoker-sa"
+  display_name = "SendWakeUpSignal invoker"
+}
+
+resource "google_project_iam_member" "sendwakeupsignal-invoker" {
+  count  = length(local.sendwakeupsignal_invoker_roles)
+  role   = local.sendwakeupsignal_invoker_roles[count.index]
+  member = "serviceAccount:${google_service_account.sendwakeupsignal-invoker.email}"
+}
+
+resource "google_cloud_scheduler_job" "sendwakeupsignal-worker" {
+  name             = "sendwakeupsignal-worker"
+  region           = var.cloudscheduler_location
+  schedule         = "0 */4 * * *"
+  time_zone        = "Europe/Prague"
+  attempt_deadline = "600s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "GET"
+    uri         = data.google_cloudfunctions_function.sendwakeupsignal.https_trigger_url
+    oidc_token {
+      audience              = data.google_cloudfunctions_function.sendwakeupsignal.https_trigger_url
+      service_account_email = google_service_account.sendwakeupsignal-invoker.email
+    }
+  }
+
+  depends_on = [
+    google_project_service.services["cloudscheduler.googleapis.com"],
+  ]
 }

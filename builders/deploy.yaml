@@ -158,6 +158,19 @@ steps:
     args:
       - functions
       - deploy
+      - SendWakeUpSignal
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --service-account=send-wakeup-signal@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
       - EfgsUploadKeys
       - --source=.
       - --trigger-http
