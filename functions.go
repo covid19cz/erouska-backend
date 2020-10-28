@@ -10,8 +10,8 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/functions/publishkeys"
 	"github.com/covid19cz/erouska-backend/internal/functions/registerehrid"
 	"github.com/covid19cz/erouska-backend/internal/functions/registernotification"
+	"github.com/covid19cz/erouska-backend/internal/functions/wakeup"
 	"github.com/covid19cz/erouska-backend/internal/pubsub"
-
 	"net/http"
 )
 
@@ -63,6 +63,11 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 //RegisterEhridAfterMath handler.
 func RegisterEhridAfterMath(ctx context.Context, m pubsub.Message) error {
 	return registerehrid.AfterMath(ctx, m)
+}
+
+//SendWakeUpSignal handler
+func SendWakeUpSignal(w http.ResponseWriter, r *http.Request) {
+	wakeup.SendWakeUpSignal(w, r)
 }
 
 // ***************
