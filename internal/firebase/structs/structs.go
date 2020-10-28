@@ -13,6 +13,18 @@ type Registration struct {
 	LastNotificationUpdatedAt int64  `json:"lastNotificationUpdatedAt"`
 }
 
+//RegistrationV1 DB entity for registration V1 - the legacy one.
+type RegistrationV1 struct {
+	FUID                  string `json:"fuid"`
+	Platform              string `json:"platform"`
+	PlatformVersion       string `json:"platformVersion"`
+	Manufacturer          string `json:"manufacturer"`
+	Model                 string `json:"model"`
+	Locale                string `json:"locale"`
+	PushRegistrationToken string `json:"pushRegistrationToken"`
+	CreatedAt             int64  `json:"createdAt"`
+}
+
 //NotificationCounter DB entity for notification counter.
 type NotificationCounter struct {
 	NotificationsCount int `json:"notificationsCount"`
