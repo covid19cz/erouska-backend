@@ -8,24 +8,12 @@ import (
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/pubsub"
-	"github.com/covid19cz/erouska-backend/internal/secrets"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
-	"github.com/sethvargo/go-envconfig"
 	"io/ioutil"
 	"net/http"
-	urlutils "net/url"
 	"strings"
 	"time"
 )
-
-type config struct {
-	HaidMappings map[string]string
-	MaxBatchSize int `env:"MAX_UPLOAD_KEYS,default=30"`
-	URL          *urlutils.URL
-	Env          efgsutils.Environment
-	NBTLSPair    *efgsutils.X509KeyPair
-	Client       *http.Client
-}
 
 //DownloadAndSaveKeys Downloads batch from EFGS.
 func DownloadAndSaveKeys(ctx context.Context, m pubsub.Message) error {
@@ -35,34 +23,34 @@ func DownloadAndSaveKeys(ctx context.Context, m pubsub.Message) error {
 		return fmt.Errorf("Error while parsing event payload: %v", decodeErr)
 	}
 
-	return downloadAndSaveKeysBatch(ctx, payload)
+	config, err := loadDownloadConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	return downloadAndSaveKeysBatch(ctx, config, payload)
 }
 
 //DownloadAndSaveYesterdaysKeys Downloads batch from yesterday from EFGS.
 func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	err := downloadAndSaveKeysBatch(ctx, efgsapi.BatchDownloadParams{
-		Date: time.Now().Add(time.Hour * -24).Format("2006-01-02"),
-	})
+	config, err := loadDownloadConfig(ctx)
+	if err == nil {
+		err = downloadAndSaveKeysBatch(ctx, config, efgsapi.BatchDownloadParams{
+			Date: time.Now().Add(time.Hour * -24).Format("2006-01-02"),
+		})
+	}
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error: %v", err), 500)
 	}
 }
 
-func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadParams) error {
+func downloadAndSaveKeysBatch(ctx context.Context, config *downloadConfig, params efgsapi.BatchDownloadParams) error {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAndSaveKeysBatch")
 
-	efgsEnv := efgsutils.GetEfgsEnvironmentOrFail()
-
 	logger.Infof("About to download batch with tag '%v' for date %v!", params.BatchTag, params.Date)
-
-	config, err := loadConfig(ctx, efgsEnv)
-	if err != nil {
-		logger.Errorf("Could not load config: %v", err)
-		return err
-	}
 
 	logger.Debugf("Using config: %+v", config)
 
@@ -89,7 +77,7 @@ func downloadAndSaveKeysBatch(ctx context.Context, params efgsapi.BatchDownloadP
 	return nil
 }
 
-func publishAllKeys(ctx context.Context, config *config, keys []efgsapi.DiagnosisKey) error {
+func publishAllKeys(ctx context.Context, config *downloadConfig, keys []efgsapi.DiagnosisKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.publishAllKeys")
 
 	logger.Debugf("About to sort downloaded keys")
@@ -114,7 +102,8 @@ func publishAllKeys(ctx context.Context, config *config, keys []efgsapi.Diagnosi
 
 		logger.Infof("Uploading %v keys from %v to our Key server", len(countryKeys), country)
 
-		if err := PublishKeysToKeyServer(ctx, haid, config.MaxBatchSize, countryKeys); err != nil {
+		if err := PublishKeysToKeyServer(ctx, config.PublishConfig, haid, countryKeys); err != nil {
+			logger.Warnf("Could not upload keys from %v: %+v", country, err)
 			errors = append(errors, fmt.Sprintf("Could not upload keys from %v country", country))
 			continue
 		}
@@ -127,7 +116,7 @@ func publishAllKeys(ctx context.Context, config *config, keys []efgsapi.Diagnosi
 	return nil
 }
 
-func downloadBatchByTag(ctx context.Context, config *config, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
+func downloadBatchByTag(ctx context.Context, config *downloadConfig, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
 	logger := logging.FromContext(ctx).Named("efgs.downloadBatchByTag")
 
 	url := config.URL
@@ -178,6 +167,10 @@ func downloadBatchByTag(ctx context.Context, config *config, date string, batchT
 		return nil, err
 	}
 
+	if resp.StatusCode == 404 {
+		return []efgsapi.DiagnosisKey{}, nil
+	}
+
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("HTTP %v: %v", resp.StatusCode, string(body))
 	}
@@ -200,44 +193,4 @@ func downloadBatchByTag(ctx context.Context, config *config, date string, batchT
 	}
 
 	return keys, nil
-}
-
-func loadConfig(ctx context.Context, env efgsutils.Environment) (*config, error) {
-	logger := logging.FromContext(ctx).Named("efgs.download-batch.loadConfig")
-
-	var config config
-	if err := envconfig.Process(ctx, &config); err != nil {
-		return nil, err
-	}
-
-	secretsClient := secrets.Client{}
-	bytes, err := secretsClient.Get("efgs-haid-mappings")
-	if err != nil {
-		return nil, err
-	}
-
-	if err = json.Unmarshal(bytes, &config.HaidMappings); err != nil {
-		return nil, err
-	}
-
-	nbtlsPair, err := efgsutils.LoadX509KeyPair(ctx, env, efgsutils.NBTLS)
-	if err != nil {
-		logger.Debugf("Error loading authentication certificate: %v", err)
-		return nil, err
-	}
-
-	url := efgsutils.GetEfgsURLOrFail(env)
-
-	client, err := efgsutils.NewEFGSClient(ctx, nbtlsPair)
-	if err != nil {
-		logger.Debugf("Could not create EFGS client: %v", err)
-		return nil, err
-	}
-
-	config.Env = env
-	config.URL = url
-	config.NBTLSPair = nbtlsPair
-	config.Client = client
-
-	return &config, nil
 }
