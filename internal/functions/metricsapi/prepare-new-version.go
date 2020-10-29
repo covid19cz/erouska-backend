@@ -10,6 +10,8 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/realtimedb"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"net/http"
 	"os"
 	"time"
@@ -133,18 +135,26 @@ func getNotificationCounter(ctx context.Context, key string) (*structs.Notificat
 
 	doc := storeClient.Doc(constants.CollectionNotificationCounters, key)
 
-	// TODO handle not found
+	var data structs.NotificationCounter
 
 	rec, err := doc.Get(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
+		if status.Code(err) != codes.NotFound {
+			return nil, fmt.Errorf("Error while querying Firestore: %v", err)
+		}
+
+		logger.Warnf("Notifications counter for '%v' was not found, using default value", key)
+
+		data = structs.NotificationCounter{
+			NotificationsCount: 0,
+		}
+	} else {
+		err = rec.DataTo(&data)
+		if err != nil {
+			return nil, fmt.Errorf("Error while querying Firestore: %v", err)
+		}
 	}
 
-	var data structs.NotificationCounter
-	err = rec.DataTo(&data)
-	if err != nil {
-		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
-	}
 	return &data, nil
 }
 
