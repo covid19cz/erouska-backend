@@ -7,26 +7,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
-	efgsdatabase "github.com/covid19cz/erouska-backend/internal/functions/efgs/database"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
-	urlutils "net/url"
-	"os"
-	"strconv"
 	"time"
 )
-
-type uploadConfiguration struct {
-	URL       *urlutils.URL
-	Env       efgsutils.Environment
-	NBTLSPair *efgsutils.X509KeyPair
-	Client    *http.Client
-	BatchTag  string
-}
 
 //UploadBatch Called in CRON every 2 hours. Gets keys from database and upload them to EFGS.
 func UploadBatch(w http.ResponseWriter, r *http.Request) {
@@ -34,30 +23,32 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	logger := logging.FromContext(ctx).Named("efgs.UploadBatch")
 	now := time.Now()
 	timeFrom := now.AddDate(0, 0, -14).Format("2006-01-02")
-	maxBatchSize, isSet := os.LookupEnv("EFGS_UPLOAD_BATCH_SIZE")
-	if !isSet {
-		logger.Error("Maximum batch size not set")
-		sendErrorResponse(w, errors.New("maximum batch size not set"))
-		return
-	}
 
-	batchSizeLimit, err := strconv.Atoi(maxBatchSize)
+	uploadConfig, err := loadUploadConfig(ctx)
 	if err != nil {
-		logger.Errorf("Error converting batch size to int: %s", err)
+		logger.Errorf("Upload configuration error: %v", err)
 		sendErrorResponse(w, err)
 		return
 	}
 
-	keys, err := efgsdatabase.Database.GetDiagnosisKeys(timeFrom)
-	if err != nil {
-		logger.Errorf("Downloading keys error: %s", err)
+	if err = uploadAndRemoveBatch(ctx, uploadConfig, timeFrom, now); err != nil {
+		logger.Errorf("Upload error: %v", err)
 		sendErrorResponse(w, err)
 		return
+	}
+}
+
+func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, timeFrom string, timeTo time.Time) error {
+	logger := logging.FromContext(ctx).Named("efgs.uploadAndRemoveBatch")
+
+	keys, err := uploadConfig.Database.GetDiagnosisKeys(timeFrom)
+	if err != nil {
+		return fmt.Errorf("Downloading keys error: %s", err)
 	}
 
 	if len(keys) <= 0 {
 		logger.Info("No new keys in database")
-		return
+		return nil
 	}
 
 	var diagnosisKeys []*efgsapi.DiagnosisKey
@@ -66,26 +57,18 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sortDiagnosisKey(diagnosisKeys)
-	uploadConfig, err := uploadBatchConfiguration(ctx)
-	if err != nil {
-		logger.Errorf("Upload configuration error: %v", err)
-		sendErrorResponse(w, err)
-		return
-	}
 
-	batches := splitBatch(diagnosisKeys, batchSizeLimit)
+	batches := splitBatch(diagnosisKeys, uploadConfig.BatchSizeLimit)
 	for _, batch := range batches {
 		diagnosisKeyBatch := makeBatch(batch)
 		hash := sha1.New()
 		_, _ = hash.Write(batchToBytes(&diagnosisKeyBatch))
-		uploadConfig.BatchTag = now.Format("20060102") + "-" + hex.EncodeToString(hash.Sum(nil))[:7]
+		uploadConfig.BatchTag = timeTo.Format("20060102") + "-" + hex.EncodeToString(hash.Sum(nil))[:7]
 		logger.Debugf("Uploading batch (%d keys) with tag %s", len(batch), uploadConfig.BatchTag)
 
 		resp, err := uploadBatch(ctx, &diagnosisKeyBatch, uploadConfig)
 		if err != nil {
-			logger.Errorf("Batch upload failed: %v", err)
-			sendErrorResponse(w, err)
-			return
+			return fmt.Errorf("Batch upload failed: %v", err)
 		}
 		if resp != nil {
 			filterInvalidDiagnosisKeys(ctx, resp, keys)
@@ -93,47 +76,16 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("Batch %s successfully uploaded", uploadConfig.BatchTag)
 	}
 
-	if err := efgsdatabase.Database.RemoveDiagnosisKey(keys); err != nil {
-		logger.Errorf("Removing uploaded keys from database failed: %s", err)
-		sendErrorResponse(w, err)
-		return
+	if err := uploadConfig.Database.RemoveDiagnosisKey(keys); err != nil {
+		return fmt.Errorf("Removing uploaded keys from database failed: %s", err)
 	}
 
 	logger.Infof("%d keys (in %d batches) successfully uploaded", len(keys), len(batches))
+
+	return nil
 }
 
-func uploadBatchConfiguration(ctx context.Context) (*uploadConfiguration, error) {
-	logger := logging.FromContext(ctx).Named("efgs.uploadBatchConfiguration")
-
-	efgsEnv := efgsutils.GetEfgsEnvironmentOrFail()
-
-	url := efgsutils.GetEfgsURLOrFail(efgsEnv)
-	url.Path = "diagnosiskeys/upload"
-
-	var err error
-	config := uploadConfiguration{
-		URL: url,
-		Env: efgsEnv,
-	}
-
-	config.Env = efgsEnv
-
-	config.NBTLSPair, err = efgsutils.LoadX509KeyPair(ctx, efgsEnv, efgsutils.NBTLS)
-	if err != nil {
-		logger.Debug("Error loading authentication certificate")
-		return nil, err
-	}
-
-	config.Client, err = efgsutils.NewEFGSClient(ctx, config.NBTLSPair)
-	if err != nil {
-		logger.Debug("Could not create EFGS client")
-		return nil, err
-	}
-
-	return &config, nil
-}
-
-func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *uploadConfiguration) (*efgsapi.UploadBatchResponse, error) {
+func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *uploadConfig) (*efgsapi.UploadBatchResponse, error) {
 	logger := logging.FromContext(ctx).Named("efgs.uploadBatch")
 
 	raw, err := proto.Marshal(batch)

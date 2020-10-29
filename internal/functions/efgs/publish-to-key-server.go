@@ -9,7 +9,6 @@ import (
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
-	"github.com/covid19cz/erouska-backend/internal/utils"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"io/ioutil"
 	"math/rand"
@@ -18,30 +17,18 @@ import (
 )
 
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-var client = http.Client{}
 
 //PublishKeysToKeyServer Publish exposure keys to Keys server.
-func PublishKeysToKeyServer(ctx context.Context, haid string, maxBatchSize int, keys []keyserverapi.ExposureKey) error {
+func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []keyserverapi.ExposureKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.PublishKeysToKeyServer")
 
-	keyServerConfig, err := utils.LoadKeyServerConfig(ctx)
-	if err != nil {
-		logger.Fatalf("Could not load key server config: %v", err)
-		return err
-	}
+	if len(keys) > config.MaxBatchSize {
+		batches := splitKeys(keys, config.MaxBatchSize)
 
-	verificationServerConfig, err := utils.LoadVerificationServerConfig(ctx)
-	if err != nil {
-		logger.Fatalf("Could not load verification server config: %v", err)
-		return err
-	}
-
-	if len(keys) > maxBatchSize {
-		batches := splitKeys(keys, maxBatchSize)
 		for _, batch := range batches {
-			resp, err := signAndPublishKeys(ctx, verificationServerConfig, keyServerConfig, haid, batch)
+			resp, err := signAndPublishKeys(ctx, config, haid, batch)
 			if err != nil {
-				logger.Errorf("Error when publishing keys: %v", err)
+				logger.Debugf("Error when publishing keys: %v", err)
 				return err
 			}
 
@@ -49,9 +36,9 @@ func PublishKeysToKeyServer(ctx context.Context, haid string, maxBatchSize int, 
 		}
 	} else {
 		// single batch
-		_, err = signAndPublishKeys(ctx, verificationServerConfig, keyServerConfig, haid, keys)
+		_, err := signAndPublishKeys(ctx, config, haid, keys)
 		if err != nil {
-			logger.Errorf("Error when publishing keys: %v", err)
+			logger.Debugf("Error when publishing keys: %v", err)
 			return err
 		}
 	}
@@ -61,16 +48,16 @@ func PublishKeysToKeyServer(ctx context.Context, haid string, maxBatchSize int, 
 	return nil
 }
 
-func signAndPublishKeys(ctx context.Context, verificationServerConfig *utils.VerificationServerConfig, keyServerConfig *utils.KeyServerConfig, haid string, keys []keyserverapi.ExposureKey) (*keyserverapi.PublishResponse, error) {
+func signAndPublishKeys(ctx context.Context, config *publishConfig, haid string, keys []keyserverapi.ExposureKey) (*keyserverapi.PublishResponse, error) {
 	logger := logging.FromContext(ctx).Named("efgs.signAndPublishKeys")
 
-	vc, err := requestNewVC(ctx, *verificationServerConfig)
+	vc, err := requestNewVC(ctx, config)
 	if err != nil {
 		logger.Debugf("Error when getting VC: %v", err)
 		return nil, err
 	}
 
-	token, err := verifyCode(ctx, *verificationServerConfig, vc)
+	token, err := verifyCode(ctx, config, vc)
 	if err != nil {
 		logger.Debugf("Error when getting token: %v", err)
 		return nil, err
@@ -79,13 +66,13 @@ func signAndPublishKeys(ctx context.Context, verificationServerConfig *utils.Ver
 	hmacKey := make([]byte, 16)
 	_, _ = seededRand.Read(hmacKey)
 
-	certificate, err := getCertificate(ctx, *verificationServerConfig, keys, token, hmacKey)
+	certificate, err := getCertificate(ctx, config, keys, token, hmacKey)
 	if err != nil {
 		logger.Debugf("Error when getting certificate: %v", err)
 		return nil, err
 	}
 
-	resp, err := publishKeys(ctx, *keyServerConfig, haid, keys, certificate, hmacKey)
+	resp, err := publishKeys(ctx, config, haid, keys, certificate, hmacKey)
 
 	if err != nil {
 		logger.Debugf("Error when publishing keys to Key server: %v", err)
@@ -95,7 +82,7 @@ func signAndPublishKeys(ctx context.Context, verificationServerConfig *utils.Ver
 	return resp, nil
 }
 
-func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (string, error) {
+func requestNewVC(ctx context.Context, config *publishConfig) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.requestNewVC")
 
 	body, err := json.Marshal(&efgsapi.IssueCodeRequest{
@@ -107,18 +94,18 @@ func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (s
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", config.GetAdminURL("api/issue"), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", config.VerificationServer.GetAdminURL("api/issue"), bytes.NewBuffer(body))
 	if err != nil {
 		return "", err
 	}
 
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("accept", "application/json")
-	req.Header.Add("x-api-key", config.AdminKey)
+	req.Header.Add("x-api-key", config.VerificationServer.AdminKey)
 
 	logger.Debugf("Requesting VC. Request: %+v", req)
 
-	response, err := client.Do(req)
+	response, err := config.Client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +119,7 @@ func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (s
 		return "", err
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != 200 && response.StatusCode != 400 {
 		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
 	}
 
@@ -149,7 +136,7 @@ func requestNewVC(ctx context.Context, config utils.VerificationServerConfig) (s
 	return r.Code, nil
 }
 
-func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code string) (string, error) {
+func verifyCode(ctx context.Context, config *publishConfig, code string) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.verifyCode")
 
 	body, err := json.Marshal(&efgsapi.VerifyRequest{
@@ -160,18 +147,18 @@ func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", config.GetDeviceURL("api/verify"), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", config.VerificationServer.GetDeviceURL("api/verify"), bytes.NewBuffer(body))
 	if err != nil {
 		return "", err
 	}
 
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("accept", "application/json")
-	req.Header.Add("x-api-key", config.DeviceKey)
+	req.Header.Add("x-api-key", config.VerificationServer.DeviceKey)
 
 	logger.Debugf("Requesting token. Request: %+v", req)
 
-	response, err := client.Do(req)
+	response, err := config.Client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -185,7 +172,7 @@ func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code
 		return "", err
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != 200 && response.StatusCode != 400 {
 		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
 	}
 
@@ -202,7 +189,7 @@ func verifyCode(ctx context.Context, config utils.VerificationServerConfig, code
 	return r.Token, nil
 }
 
-func getCertificate(ctx context.Context, config utils.VerificationServerConfig, keys []keyserverapi.ExposureKey, token string, hmacKey []byte) (string, error) {
+func getCertificate(ctx context.Context, config *publishConfig, keys []keyserverapi.ExposureKey, token string, hmacKey []byte) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.getCertificate")
 
 	hmac, err := efgsutils.CalculateExposureKeysHMAC(keys, hmacKey)
@@ -220,18 +207,18 @@ func getCertificate(ctx context.Context, config utils.VerificationServerConfig, 
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", config.GetDeviceURL("api/certificate"), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", config.VerificationServer.GetDeviceURL("api/certificate"), bytes.NewBuffer(body))
 	if err != nil {
 		return "", err
 	}
 
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("accept", "application/json")
-	req.Header.Add("x-api-key", config.DeviceKey)
+	req.Header.Add("x-api-key", config.VerificationServer.DeviceKey)
 
 	logger.Debugf("Getting certificate. Request: %+v", req)
 
-	response, err := client.Do(req)
+	response, err := config.Client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -245,7 +232,7 @@ func getCertificate(ctx context.Context, config utils.VerificationServerConfig, 
 		return "", err
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != 200 && response.StatusCode != 400 {
 		return "", fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
 	}
 
@@ -262,7 +249,7 @@ func getCertificate(ctx context.Context, config utils.VerificationServerConfig, 
 	return r.Certificate, nil
 }
 
-func publishKeys(ctx context.Context, config utils.KeyServerConfig, haid string, keys []keyserverapi.ExposureKey, certificate string, secret []byte) (*keyserverapi.PublishResponse, error) {
+func publishKeys(ctx context.Context, config *publishConfig, haid string, keys []keyserverapi.ExposureKey, certificate string, secret []byte) (*keyserverapi.PublishResponse, error) {
 	logger := logging.FromContext(ctx).Named("efgs.publishKeys")
 
 	keysCount := len(keys)
@@ -285,7 +272,7 @@ func publishKeys(ctx context.Context, config utils.KeyServerConfig, haid string,
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", config.GetURL("v1/publish"), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", config.KeyServer.GetURL("v1/publish"), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +282,7 @@ func publishKeys(ctx context.Context, config utils.KeyServerConfig, haid string,
 
 	logger.Debugf("Request: %+v", req)
 
-	response, err := client.Do(req)
+	response, err := config.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +296,7 @@ func publishKeys(ctx context.Context, config utils.KeyServerConfig, haid string,
 		return nil, err
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != 200 && response.StatusCode != 400 {
 		return nil, fmt.Errorf("HTTP %v: %v", response.StatusCode, string(body))
 	}
 
