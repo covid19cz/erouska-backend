@@ -122,6 +122,32 @@ func (db Connection) RemoveDiagnosisKey(keys []*efgsapi.DiagnosisKeyWrapper) err
 	return nil
 }
 
+//UpdateKey Persist updated array of keys.
+func (db Connection) UpdateKey(keys []*efgsapi.DiagnosisKeyWrapper) error {
+	connection := db.inner().Conn()
+	defer connection.Close()
+
+	_, err := connection.Model(&keys).WherePK().Update()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//RemoveInvalidKeys Remove N times refused keys
+func (db Connection) RemoveInvalidKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
+	connection := db.inner().Conn()
+	defer connection.Close()
+
+	_, err := connection.Model(&keys).Where("retries >= 2").Delete()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func createSchema(cpool *pg.DB) error {
 	connection := cpool.Conn()
 	defer connection.Close()
