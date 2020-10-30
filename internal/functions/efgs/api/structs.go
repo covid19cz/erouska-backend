@@ -89,9 +89,10 @@ func (s *ReportType) UnmarshalJSON(data []byte) error {
 
 //UploadBatchResponse Response for upload batch call to EFGS
 type UploadBatchResponse struct {
-	Error     []int `json:"500"`
-	Duplicate []int `json:"409"`
-	Success   []int `json:"201"`
+	StatusCode int   `json:"code,omitempty"`
+	Error      []int `json:"500"`
+	Duplicate  []int `json:"409"`
+	Success    []int `json:"201"`
 }
 
 //BatchDownloadParams Struct holding download input data.
@@ -113,6 +114,7 @@ type DiagnosisKeyWrapper struct {
 	Origin                     string    `pg:"default:'CZ'" json:"origin,omitempty"`
 	ReportType                 int       `json:"reportType,omitempty"`
 	DaysSinceOnsetOfSymptoms   int32     `json:"days_since_onset_of_symptoms,omitempty"`
+	Retries                    int       `pg:"default:0" json:"retries,omitempty"`
 }
 
 //ToData convert struct from DiagnosisKeyWrapper to DiagnosisKey
