@@ -71,8 +71,12 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, timeF
 			return fmt.Errorf("Batch upload failed: %v", err)
 		}
 		if resp != nil {
-			filterInvalidDiagnosisKeys(ctx, resp, keys)
+			logger.Debugf("Batch was partially invalid and therefore rejected")
+			// TODO Matej
+			filterInvalidDiagnosisKeys(resp, keys)
+			return nil
 		}
+
 		logger.Debugf("Batch %s successfully uploaded", uploadConfig.BatchTag)
 	}
 
@@ -154,13 +158,12 @@ func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *
 	case 207:
 		var parsedResponse efgsapi.UploadBatchResponse
 
-		jsonErr := json.Unmarshal(body, &parsedResponse)
-		if jsonErr != nil {
+		if err = json.Unmarshal(body, &parsedResponse); err != nil {
 			logger.Debug("Json parsing error")
-			return nil, jsonErr
+			return nil, err
 		}
 
-		logger.Debug("Some keys in batch were invalid or duplicated")
+		logger.Debug("Some keys in batch were invalid or duplicated: %+v", parsedResponse)
 		return &parsedResponse, nil
 	case 403:
 		return nil, errors.New("authentication failed")
@@ -170,11 +173,9 @@ func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *
 	}
 }
 
-func filterInvalidDiagnosisKeys(ctx context.Context, resp *efgsapi.UploadBatchResponse, keys []*efgsapi.DiagnosisKeyWrapper) []*efgsapi.DiagnosisKeyWrapper {
-	logger := logging.FromContext(ctx).Named("efgs.filterInvalidDiagnosisKeys")
+func filterInvalidDiagnosisKeys(resp *efgsapi.UploadBatchResponse, keys []*efgsapi.DiagnosisKeyWrapper) []*efgsapi.DiagnosisKeyWrapper {
 	var filteredKeys = keys
 
-	logger.Debugf("Part of batch was successfully uploaded")
 	for _, e := range resp.Error {
 		filteredKeys = append(filteredKeys[:e], filteredKeys[e+1:]...)
 	}
