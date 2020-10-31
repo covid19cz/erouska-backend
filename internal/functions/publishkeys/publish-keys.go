@@ -53,7 +53,7 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		logger.Infof("Successfully uploaded %v keys to Key server (%v keys sent)", serverResponse.InsertedExposures, len(serverRequest.Keys))
 
 		if request.ConsentToFederation {
-			logger.Debug("Going to save uploaded keys to EFSG database")
+			logger.Debug("Going to save uploaded keys to EFGS database")
 
 			if err = handleKeysUpload(request); err != nil {
 				logger.Errorf("Error while processing keys persistence: %v", err)
