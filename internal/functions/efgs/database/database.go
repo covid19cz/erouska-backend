@@ -11,6 +11,7 @@ import (
 	"github.com/go-pg/pg/v10/orm"
 	"net"
 	"sync"
+	"time"
 )
 
 //Database Singleton connection to EFGS database.
@@ -97,20 +98,21 @@ func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
 	return nil
 }
 
-//GetDiagnosisKeys Get keys from database that are not yet in EFGS and are older than dateTo and newer than dateFrom.
-func (db Connection) GetDiagnosisKeys(dateFrom string) ([]*efgsapi.DiagnosisKeyWrapper, error) {
+//GetDiagnosisKeys Get keys from the DB that are not yet in EFGS and are not older than dateFrom.
+func (db Connection) GetDiagnosisKeys(dateFrom time.Time) ([]*efgsapi.DiagnosisKeyWrapper, error) {
 	connection := db.inner().Conn()
 	defer connection.Close()
 
 	var keys []*efgsapi.DiagnosisKeyWrapper
-	if err := connection.Model(&keys).Where("created_at >= ?", dateFrom).Select(); err != nil {
+	if err := connection.Model(&keys).Where("created_at >= ?", dateFrom.Format("2006-01-02")).Select(); err != nil {
 		return nil, err
 	}
+
 	return keys, nil
 }
 
-//RemoveDiagnosisKey Remove array of DiagnosisKeyWrapper from database.
-func (db Connection) RemoveDiagnosisKey(keys []*efgsapi.DiagnosisKeyWrapper) error {
+//RemoveDiagnosisKeys Remove array of DiagnosisKeyWrapper from the DB.
+func (db Connection) RemoveDiagnosisKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
 	connection := db.inner().Conn()
 	defer connection.Close()
 
@@ -122,8 +124,8 @@ func (db Connection) RemoveDiagnosisKey(keys []*efgsapi.DiagnosisKeyWrapper) err
 	return nil
 }
 
-//UpdateKey Persist updated array of keys.
-func (db Connection) UpdateKey(keys []*efgsapi.DiagnosisKeyWrapper) error {
+//UpdateKeys Updates key records in the DB.
+func (db Connection) UpdateKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
 	connection := db.inner().Conn()
 	defer connection.Close()
 
@@ -135,7 +137,7 @@ func (db Connection) UpdateKey(keys []*efgsapi.DiagnosisKeyWrapper) error {
 	return nil
 }
 
-//RemoveInvalidKeys Remove N times refused keys
+//RemoveInvalidKeys Remove N times refused keys from the DB
 func (db Connection) RemoveInvalidKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
 	connection := db.inner().Conn()
 	defer connection.Close()
@@ -164,5 +166,6 @@ func createSchema(cpool *pg.DB) error {
 			return err
 		}
 	}
+
 	return nil
 }
