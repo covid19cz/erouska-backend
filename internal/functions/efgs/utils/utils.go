@@ -11,6 +11,16 @@ import (
 //Environment Environment of EFGS.
 type Environment string
 
+//EfgsExtendedLogging Determines whether extended logging should be used - e.g. all raw EFGS requests and responses.
+var EfgsExtendedLogging = false
+
+func init() {
+	_, exists := os.LookupEnv("EFGS_EXTENDED_LOGGING")
+	if exists {
+		EfgsExtendedLogging = true
+	}
+}
+
 const (
 	//EnvLocal Our local testing environment.
 	EnvLocal Environment = "local"

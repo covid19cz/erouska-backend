@@ -25,6 +25,8 @@ func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid str
 	if len(keys) > config.MaxBatchSize {
 		batches := splitKeys(keys, config.MaxBatchSize)
 
+		//rate limiting
+
 		for _, batch := range batches {
 			resp, err := signAndPublishKeys(ctx, config, haid, batch)
 			if err != nil {
@@ -103,7 +105,11 @@ func requestNewVC(ctx context.Context, config *publishConfig) (string, error) {
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("x-api-key", config.VerificationServer.AdminKey)
 
-	logger.Debugf("Requesting VC. Request: %+v", req)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Requesting new VC-Request: %+v", req)
+	} else {
+		logger.Debugf("Requesting new VC")
+	}
 
 	response, err := config.Client.Do(req)
 	if err != nil {
@@ -127,7 +133,9 @@ func requestNewVC(ctx context.Context, config *publishConfig) (string, error) {
 	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
-	logger.Debugf("Response: %+v", r)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Response: %+v", r)
+	}
 
 	if r.ErrorCode != "" || r.Error != "" {
 		return "", fmt.Errorf("%v: %+v", r.ErrorCode, r.Error)
@@ -156,7 +164,11 @@ func verifyCode(ctx context.Context, config *publishConfig, code string) (string
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("x-api-key", config.VerificationServer.DeviceKey)
 
-	logger.Debugf("Requesting token. Request: %+v", req)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Requesting token. Request: %+v", req)
+	} else {
+		logger.Debugf("Requesting token")
+	}
 
 	response, err := config.Client.Do(req)
 	if err != nil {
@@ -180,7 +192,9 @@ func verifyCode(ctx context.Context, config *publishConfig, code string) (string
 	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
-	logger.Debugf("Response: %+v", r)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Response: %+v", r)
+	}
 
 	if r.ErrorCode != "" || r.Error != "" {
 		return "", fmt.Errorf("%v: %+v", r.ErrorCode, r.Error)
@@ -216,7 +230,11 @@ func getCertificate(ctx context.Context, config *publishConfig, keys []keyserver
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("x-api-key", config.VerificationServer.DeviceKey)
 
-	logger.Debugf("Getting certificate. Request: %+v", req)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Getting certificate. Request: %+v", req)
+	} else {
+		logger.Debugf("Getting certificate")
+	}
 
 	response, err := config.Client.Do(req)
 	if err != nil {
@@ -240,7 +258,9 @@ func getCertificate(ctx context.Context, config *publishConfig, keys []keyserver
 	if err = json.Unmarshal(body, &r); err != nil {
 		return "", err
 	}
-	logger.Debugf("Response: %+v", r)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Response: %+v", r)
+	}
 
 	if r.ErrorCode != "" || r.Error != "" {
 		return "", fmt.Errorf("%v: %+v", r.ErrorCode, r.Error)
@@ -280,7 +300,11 @@ func publishKeys(ctx context.Context, config *publishConfig, haid string, keys [
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("accept", "application/json")
 
-	logger.Debugf("Request: %+v", req)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Publishing %v keys with HAID %v. Request: %+v", keysCount, haid, req)
+	} else {
+		logger.Debugf("Publishing %v keys with HAID %v", keysCount, haid)
+	}
 
 	response, err := config.Client.Do(req)
 	if err != nil {
@@ -304,7 +328,9 @@ func publishKeys(ctx context.Context, config *publishConfig, haid string, keys [
 	if err = json.Unmarshal(body, &r); err != nil {
 		return nil, err
 	}
-	logger.Debugf("Response: %+v", r)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Response: %+v", r)
+	}
 
 	if r.Code != "" || r.ErrorMessage != "" {
 		return nil, fmt.Errorf("%v: %+v", r.Code, r.ErrorMessage)
