@@ -8,6 +8,7 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/functions/efgs"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsdatabase "github.com/covid19cz/erouska-backend/internal/functions/efgs/database"
+	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/pkg/api/v1"
@@ -37,7 +38,9 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Debugf("Handling PublishKeys request: %+v", request)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Handling PublishKeys request: %+v", request)
+	}
 
 	var serverRequest = toServerRequest(&request)
 
@@ -47,7 +50,9 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Debugf("Received response from Key server: %+v", serverResponse)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Received response from Key server: %+v", serverResponse)
+	}
 
 	if serverResponse.Code == "" && serverResponse.ErrorMessage == "" {
 		logger.Infof("Successfully uploaded %v keys to Key server (%v keys sent)", serverResponse.InsertedExposures, len(serverRequest.Keys))
@@ -140,7 +145,9 @@ func sendResponseToClient(logger *zap.SugaredLogger, w http.ResponseWriter, resp
 		return
 	}
 
-	logger.Debugf("Sending response to client: %+v", response)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Sending response to client: %+v", response)
+	}
 
 	_, err = w.Write(blob)
 	if err != nil {

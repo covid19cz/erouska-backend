@@ -103,10 +103,12 @@ func publishAllKeys(ctx context.Context, config *downloadConfig, keys []efgsapi.
 		logger.Infof("Uploading %v keys from %v to our Key server", len(countryKeys), country)
 
 		if err := PublishKeysToKeyServer(ctx, config.PublishConfig, haid, countryKeys); err != nil {
-			logger.Warnf("Could not upload keys from %v: %+v", country, err)
-			errors = append(errors, fmt.Sprintf("Could not upload keys from %v country", country))
+			logger.Warnf("Could not upload %v keys from %v: %+v", len(countryKeys), country, err)
+			errors = append(errors, fmt.Sprintf("Could not upload %v keys from %v country", len(countryKeys), country))
 			continue
 		}
+
+		logger.Debugf("Successfully imported %v keys from %v", len(countryKeys), country)
 	}
 
 	if len(errors) != 0 {
@@ -149,7 +151,9 @@ func downloadBatchByTag(ctx context.Context, config *downloadConfig, date string
 		req.Header.Set("X-SSL-Client-DN", subject)
 	}
 
-	logger.Debugf("Download request: %+v", req)
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Download request: %+v", req)
+	}
 
 	resp, err := config.Client.Do(req)
 
