@@ -88,8 +88,8 @@ func requestNewVC(ctx context.Context, config *publishConfig) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.requestNewVC")
 
 	body, err := json.Marshal(&efgsapi.IssueCodeRequest{
-		Phone:    "",
-		TestType: "confirmed",
+		TestType:    "confirmed",
+		SymptomDate: time.Now().AddDate(0, 0, -3).Format("2006-01-02"),
 	})
 
 	if err != nil {
@@ -141,14 +141,14 @@ func requestNewVC(ctx context.Context, config *publishConfig) (string, error) {
 		return "", fmt.Errorf("%v: %+v", r.ErrorCode, r.Error)
 	}
 
-	return r.Code, nil
+	return r.VerificationCode, nil
 }
 
 func verifyCode(ctx context.Context, config *publishConfig, code string) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.verifyCode")
 
 	body, err := json.Marshal(&efgsapi.VerifyRequest{
-		Code: code,
+		VerificationCode: code,
 	})
 
 	if err != nil {
@@ -200,7 +200,7 @@ func verifyCode(ctx context.Context, config *publishConfig, code string) (string
 		return "", fmt.Errorf("%v: %+v", r.ErrorCode, r.Error)
 	}
 
-	return r.Token, nil
+	return r.VerificationToken, nil
 }
 
 func getCertificate(ctx context.Context, config *publishConfig, keys []keyserverapi.ExposureKey, token string, hmacKey []byte) (string, error) {
@@ -213,8 +213,8 @@ func getCertificate(ctx context.Context, config *publishConfig, keys []keyserver
 	}
 
 	body, err := json.Marshal(&efgsapi.CertificateRequest{
-		Token:   token,
-		KeyHmac: base64.StdEncoding.EncodeToString(hmac),
+		VerificationToken: token,
+		ExposureKeyHMAC:   base64.StdEncoding.EncodeToString(hmac),
 	})
 
 	if err != nil {

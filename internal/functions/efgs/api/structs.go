@@ -3,51 +3,29 @@ package api
 import (
 	"encoding/base64"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
+	verifserverapi "github.com/google/exposure-notifications-verification-server/pkg/api"
 	"strconv"
 	"strings"
 	"time"
 )
 
-//GenericVerServerResponse Generic part of the Verification server response.
-type GenericVerServerResponse struct {
-	Error     string `json:"error"`
-	ErrorCode string `json:"errorCode"`
-}
-
 //IssueCodeRequest Issue code request to the Verification server
-type IssueCodeRequest struct {
-	Phone    string `json:"phone"`
-	TestType string `json:"testType"`
-}
+type IssueCodeRequest = verifserverapi.IssueCodeRequest
 
 //IssueCodeResponse Issue code response from the Verification server
-type IssueCodeResponse struct {
-	GenericVerServerResponse
-	Code string `json:"code"`
-}
+type IssueCodeResponse = verifserverapi.IssueCodeResponse
 
 //VerifyRequest  Verify request to the Verification server
-type VerifyRequest struct {
-	Code string `json:"code"`
-}
+type VerifyRequest = verifserverapi.VerifyCodeRequest
 
 //VerifyResponse Verify response from the Verification server
-type VerifyResponse struct {
-	GenericVerServerResponse
-	Token string `json:"token"`
-}
+type VerifyResponse = verifserverapi.VerifyCodeResponse
 
-//CertificateRequest Cerificate request to the Verification server
-type CertificateRequest struct {
-	Token   string `json:"token"`
-	KeyHmac string `json:"ekeyhmac"`
-}
+//CertificateRequest Certificate request to the Verification server
+type CertificateRequest = verifserverapi.VerificationCertificateRequest
 
 //CertificateResponse Certificate response to the Verification server
-type CertificateResponse struct {
-	GenericVerServerResponse
-	Certificate string `json:"certificate"`
-}
+type CertificateResponse = verifserverapi.VerificationCertificateResponse
 
 //DownloadBatchResponse Response for download batch call to EFGS
 type DownloadBatchResponse struct {
