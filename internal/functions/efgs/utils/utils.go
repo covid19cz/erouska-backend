@@ -15,8 +15,8 @@ type Environment string
 var EfgsExtendedLogging = false
 
 func init() {
-	_, exists := os.LookupEnv("EFGS_EXTENDED_LOGGING")
-	if exists {
+	v, exists := os.LookupEnv("EFGS_EXTENDED_LOGGING")
+	if exists && v == "true" {
 		EfgsExtendedLogging = true
 	}
 }
