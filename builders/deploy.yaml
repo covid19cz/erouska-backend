@@ -205,3 +205,16 @@ steps:
       - --memory=128
       - --service-account=efgs-remove-old-keys@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_ENV=${_EFGS_ENV},EXPOSURE_KEYS_EXPIRATION=${_KEY_VALIDITY_DAYS},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+  - name: 'gcr.io/cloud-builders/gcloud'
+    waitFor: ['-']
+    args:
+      - functions
+      - deploy
+      - EfgsIssueTestingVerificationCode
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --service-account=efgs-issue-tst-verif-code@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_TESTING_VC_ISSUE_ENABLED=${_EFGS_TESTING_VC_ISSUE_ENABLED},KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}

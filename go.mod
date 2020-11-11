@@ -19,6 +19,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1
 	go.uber.org/zap v1.16.0
+	golang.org/x/net v0.0.0-20200925080053-05aa5d4ee321
 	google.golang.org/api v0.31.0
 	google.golang.org/genproto v0.0.0-20200901141002-b3bf27a9dbd1
 	google.golang.org/grpc v1.31.1
