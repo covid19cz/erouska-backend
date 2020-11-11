@@ -94,3 +94,8 @@ func EfgsDownloadYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 func EfgsRemoveOldKeys(w http.ResponseWriter, r *http.Request) {
 	efgs.CleanupDatabase(w, r)
 }
+
+//EfgsIssueTestingVerificationCode handler.
+func EfgsIssueTestingVerificationCode(w http.ResponseWriter, r *http.Request) {
+	efgs.IssueTestingVerificationCode(w, r)
+}

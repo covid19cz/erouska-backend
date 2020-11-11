@@ -49,6 +49,13 @@ locals {
     "roles/cloudfunctions.serviceAgent",
     "roles/iam.serviceAccountUser"
   ]
+
+  # EfgsIssueTestingVerificationCode
+
+  issuetestingverificationcode_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/secretmanager.secretAccessor",
+  ]
 }
 
 # UploadKeys
@@ -230,4 +237,22 @@ resource "google_cloud_scheduler_job" "efgsremoveoldkeys-worker" {
   depends_on = [
     google_project_service.services["cloudscheduler.googleapis.com"],
   ]
+}
+
+# IssueTestingVerificationCode
+
+data "google_cloudfunctions_function" "issuetestingverificationcode" {
+  name    = "EfgsIssueTestingVerificationCode"
+  project = var.project
+}
+
+resource "google_service_account" "issuetestingverificationcode" {
+  account_id   = "efgs-issue-tst-verif-code"
+  display_name = "EfgsIssueTestingVerificationCode cloud function service account"
+}
+
+resource "google_project_iam_member" "issuetestingverificationcode" {
+  count  = length(local.issuetestingverificationcode_roles)
+  role   = local.issuetestingverificationcode_roles[count.index]
+  member = "serviceAccount:${google_service_account.issuetestingverificationcode.email}"
 }
