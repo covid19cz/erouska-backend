@@ -193,15 +193,15 @@ steps:
       - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-env-vars=PROJECT_ID=${PROJECT_ID},MAX_UPLOAD_KEYS=${_MAX_UPLOAD_KEYS},KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL},EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
   - name: 'gcr.io/cloud-builders/gcloud'
-      waitFor: ['-']
-      args:
-        - functions
-        - deploy
-        - EfgsRemoveOldKeys
-        - --source=.
-        - --trigger-http
-        - --region=europe-west1
-        - --runtime=go113
-        - --memory=128
-        - --service-account=efgs-remove-old-keys@${PROJECT_ID}.iam.gserviceaccount.com
-        - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_ENV=${_EFGS_ENV},EXPOSURE_KEYS_EXPIRATION=${_KEY_VALIDITY_DAYS},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+    waitFor: ['-']
+    args:
+      - functions
+      - deploy
+      - EfgsRemoveOldKeys
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --service-account=efgs-remove-old-keys@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_ENV=${_EFGS_ENV},EXPOSURE_KEYS_EXPIRATION=${_KEY_VALIDITY_DAYS},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
