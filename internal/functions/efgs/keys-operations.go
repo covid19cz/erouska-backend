@@ -12,8 +12,15 @@ import (
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"go.mozilla.org/pkcs7"
 	"sort"
+	"time"
 	"unsafe"
 )
+
+//ExpKey The exposure key.
+type ExpKey = keyserverapi.ExposureKey
+
+//ExpKeyBatch Batch (array) of exposure keys.
+type ExpKeyBatch = []ExpKey
 
 //ToDiagnosisKey Converts ExposureKey to DiagnosisKey
 func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int32) *efgsapi.DiagnosisKey {
@@ -150,4 +157,84 @@ func signBatch(ctx context.Context, efgsEnv efgsutils.Environment, diagnosisKey 
 	}
 
 	return b64.StdEncoding.EncodeToString(detachedSignature), nil
+}
+
+func filterRecentKeys(keys ExpKeyBatch, maxAge int) ExpKeyBatch {
+	now := time.Now().Add(30 - time.Minute).Unix()
+
+	return filterKeys(keys, func(k ExpKey) bool {
+		age := now - int64(k.IntervalNumber*600)
+		return age <= int64(maxAge)*24*int64(time.Hour.Seconds())
+	})
+}
+
+func splitKeys(keys []ExpKey, batchSize int, maxOverlapping int) (batches []ExpKeyBatch) {
+
+	addNewChunk := func(key ExpKey) {
+		batches = append(batches, ExpKeyBatch{key})
+	}
+
+	// Determines whether the chunk is suitable for the key.
+	// 1) It must not have too much keys that overlap with the given one.
+	// 2) It must not have any unaligned keys.
+	isSuitable := func(chunk ExpKeyBatch, key ExpKey) bool {
+		if len(chunk) >= batchSize {
+			return false
+		}
+
+		keyIntervalNumber := key.IntervalNumber
+
+		overlapping := 0
+
+		for _, key := range chunk {
+			if key.IntervalNumber == keyIntervalNumber {
+				overlapping++
+			}
+
+			// If the key is unaligned but it's not overlapping key at the same moment...
+			if key.IntervalNumber+key.IntervalCount > keyIntervalNumber && key.IntervalNumber != keyIntervalNumber {
+				return false
+			}
+		}
+
+		return overlapping < maxOverlapping
+	}
+
+	// ------
+
+	// First, sort the keys.
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].IntervalNumber == keys[j].IntervalNumber {
+			return keys[i].IntervalCount < keys[j].IntervalCount
+		}
+		return keys[i].IntervalNumber < keys[j].IntervalNumber
+	})
+
+	// Try to find suitable batch for every key. When none is found, new batch is created.
+	for _, key := range keys {
+		suitableBatchIndex := -1
+		for i, batch := range batches {
+			if isSuitable(batch, key) {
+				suitableBatchIndex = i
+				continue
+			}
+		}
+
+		if suitableBatchIndex >= 0 {
+			batches[suitableBatchIndex] = append(batches[suitableBatchIndex], key)
+		} else {
+			addNewChunk(key)
+		}
+	}
+
+	return batches
+}
+
+func filterKeys(ss ExpKeyBatch, predicate func(key ExpKey) bool) (ret ExpKeyBatch) {
+	for _, s := range ss {
+		if predicate(s) {
+			ret = append(ret, s)
+		}
+	}
+	return
 }

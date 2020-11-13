@@ -27,10 +27,12 @@ type uploadConfig struct {
 }
 
 type publishConfig struct {
-	VerificationServer *utils.VerificationServerConfig
-	KeyServer          *utils.KeyServerConfig
-	Client             *http.Client
-	MaxBatchSize       int `env:"MAX_UPLOAD_KEYS,default=30"`
+	VerificationServer       *utils.VerificationServerConfig
+	KeyServer                *utils.KeyServerConfig
+	Client                   *http.Client
+	MaxKeysOnPublish         int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
+	MaxIntervalAge           int `env:"MAX_INTERVAL_AGE_ON_PUBLISH,default=15"`
+	MaxSameStartIntervalKeys int `env:"MAX_SAME_START_INTERVAL_KEYS,default=15"`
 }
 
 type downloadConfig struct {
