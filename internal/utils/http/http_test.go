@@ -180,7 +180,7 @@ func TestDecodeJSONOrReportErrorMissingField(t *testing.T) {
 	var request testRequest
 
 	assert.False(t, DecodeJSONOrReportError(rr, req, &request))
-	assert.Equal(t, `{"error":{"status":3,"message":"Validation of the request has failed: Key: 'testRequest.Field2' Error:Field validation for 'Field2' failed on the 'required' tag"}}`, rr.Body.String())
+	assert.Equal(t, `{"error":{"status":"INVALID_ARGUMENT","message":"Validation of the request has failed: Key: 'testRequest.Field2' Error:Field validation for 'Field2' failed on the 'required' tag"}}`, rr.Body.String())
 }
 
 func TestSendResponse(t *testing.T) {
@@ -231,7 +231,7 @@ func TestSendErrorResponseUnknownError(t *testing.T) {
 
 	assert.Equal(t, `200 OK`, response.Status)
 	assert.Equal(t, "application/json", response.Header.Get("Content-Type"))
-	assert.Equal(t, `{"error":{"status":13,"message":"ahoj"}}`, rr.Body.String())
+	assert.Equal(t, `{"error":{"status":"INTERNAL","message":"ahoj"}}`, rr.Body.String())
 }
 
 func TestSendErrorResponseBadRequestError(t *testing.T) {
@@ -248,7 +248,7 @@ func TestSendErrorResponseBadRequestError(t *testing.T) {
 
 	assert.Equal(t, `200 OK`, response.Status)
 	assert.Equal(t, "application/json", response.Header.Get("Content-Type"))
-	assert.Equal(t, `{"error":{"status":3,"message":"request is screwed"}}`, rr.Body.String())
+	assert.Equal(t, `{"error":{"status":"INVALID_ARGUMENT","message":"request is screwed"}}`, rr.Body.String())
 }
 
 func TestSendErrorResponseNotFoundError(t *testing.T) {
@@ -265,7 +265,7 @@ func TestSendErrorResponseNotFoundError(t *testing.T) {
 
 	assert.Equal(t, `200 OK`, response.Status)
 	assert.Equal(t, "application/json", response.Header.Get("Content-Type"))
-	assert.Equal(t, `{"error":{"status":5,"message":"entity not found"}}`, rr.Body.String())
+	assert.Equal(t, `{"error":{"status":"NOT_FOUND","message":"entity not found"}}`, rr.Body.String())
 }
 
 func TestSendErrorResponseGenericError(t *testing.T) {
@@ -282,5 +282,5 @@ func TestSendErrorResponseGenericError(t *testing.T) {
 
 	assert.Equal(t, `200 OK`, response.Status)
 	assert.Equal(t, "application/json", response.Header.Get("Content-Type"))
-	assert.Equal(t, `{"error":{"status":13,"message":"Error while doing something"}}`, rr.Body.String())
+	assert.Equal(t, `{"error":{"status":"INTERNAL","message":"Error while doing something"}}`, rr.Body.String())
 }
