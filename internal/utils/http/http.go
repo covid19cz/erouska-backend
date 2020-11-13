@@ -16,7 +16,7 @@ import (
 )
 
 type errorResponse struct {
-	Status  int32  `json:"status,omitempty"`
+	Status  string `json:"status,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -170,10 +170,8 @@ func SendErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 func sendErrorResponse(w http.ResponseWriter, r *http.Request, error rpccode.Code, message string) {
 	logger := logging.FromContext(r.Context())
 
-	errorCode := rpccode.Code_value[error.String()]
-
 	status := errorResponse{
-		Status:  errorCode,
+		Status:  error.String(),
 		Message: message,
 	}
 
@@ -194,5 +192,5 @@ func sendErrorResponse(w http.ResponseWriter, r *http.Request, error rpccode.Cod
 		return
 	}
 
-	logger.Debugf("Returning error response: %+v", status)
+	logger.Errorf("Returning error response: %+v", wrappedStatus)
 }
