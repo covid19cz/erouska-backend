@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/utils"
+	"google.golang.org/api/iterator"
 	"net/http"
 	"regexp"
 
@@ -43,11 +44,13 @@ func ChangePushToken(w http.ResponseWriter, r *http.Request) {
 
 	isEhrid, _ := regexp.MatchString(utils.EhridRegex, uid)
 
-	if !isEhrid {
-		logger.Infof("Provided ID is not eHrid: %v", uid)
-		err = handleForFUID(ctx, uid, request)
+	var storeClient store.Storer = store.Client{}
+
+	if isEhrid {
+		err = handleForEhrid(ctx, storeClient, uid, request.PushRegistrationToken)
 	} else {
-		err = handleForEhrid(ctx, uid, request)
+		logger.Infof("Provided ID is not eHrid: %v", uid)
+		err = handleForFUID(ctx, storeClient, uid, request.PushRegistrationToken)
 	}
 
 	if err != nil {
@@ -59,9 +62,8 @@ func ChangePushToken(w http.ResponseWriter, r *http.Request) {
 	httputils.SendEmptyResponse(w, r)
 }
 
-func handleForEhrid(ctx context.Context, ehrid string, request v1.ChangePushTokenRequest) error {
-	logger := logging.FromContext(ctx)
-	storeClient := store.Client{}
+func handleForEhrid(ctx context.Context, storeClient store.Storer, ehrid string, pushToken string) error {
+	logger := logging.FromContext(ctx).Named("change-push-token.handleForEhrid")
 
 	doc := storeClient.Doc(constants.CollectionRegistrations, ehrid)
 
@@ -86,7 +88,7 @@ func handleForEhrid(ctx context.Context, ehrid string, request v1.ChangePushToke
 		}
 		logger.Debugf("Found registration: %+v", registration)
 
-		registration.PushRegistrationToken = request.PushRegistrationToken
+		registration.PushRegistrationToken = pushToken
 
 		logger.Debugf("Saving updated push token: %+v", registration)
 
@@ -94,13 +96,15 @@ func handleForEhrid(ctx context.Context, ehrid string, request v1.ChangePushToke
 	})
 }
 
-func handleForFUID(ctx context.Context, fuid string, request v1.ChangePushTokenRequest) error {
-	logger := logging.FromContext(ctx)
-	storeClient := store.Client{}
+func handleForFUID(ctx context.Context, storeClient store.Storer, fuid string, pushToken string) error {
+	logger := logging.FromContext(ctx).Named("change-push-token.handleForFUID")
 
-	doc := storeClient.Doc(constants.CollectionRegistrationsV1, fuid)
+	logger.Debugf("Looking for FUID %v in collection %v", fuid, constants.CollectionRegistrationsV1)
 
-	logger.Debugf("Trying to find registration for %v in %v", fuid, constants.CollectionRegistrationsV1)
+	doc, err := findDocByFUID(ctx, storeClient, fuid)
+	if err != nil {
+		return err
+	}
 
 	return storeClient.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		rec, err := tx.Get(doc)
@@ -121,10 +125,34 @@ func handleForFUID(ctx context.Context, fuid string, request v1.ChangePushTokenR
 		}
 		logger.Debugf("Found registration: %+v", registration)
 
-		registration.PushRegistrationToken = request.PushRegistrationToken
+		registration.PushRegistrationToken = pushToken
 
 		logger.Debugf("Saving updated push token: %+v", registration)
 
 		return tx.Set(doc, registration)
 	})
+}
+
+func findDocByFUID(ctx context.Context, storeClient store.Storer, fuid string) (*firestore.DocumentRef, error) {
+	it := storeClient.Find(constants.CollectionRegistrationsV1, "fuid", fuid).Snapshots(ctx)
+
+	resp, err := it.Next()
+	if err == iterator.Done || (resp != nil && resp.Size == 0) {
+		return nil, fmt.Errorf("Could not find record for FUID %v: resp=%v %v", fuid, resp, err)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	snap, err := resp.Documents.Next()
+	if err == iterator.Done || snap == nil {
+		return nil, fmt.Errorf("Could not find record for FUID %v: snap=%v %v", fuid, snap, err)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return snap.Ref, nil
 }
