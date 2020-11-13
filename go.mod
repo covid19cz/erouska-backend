@@ -15,6 +15,7 @@ require (
 	github.com/google/exposure-notifications-server v0.16.0
 	github.com/google/exposure-notifications-verification-server v0.16.0
 	github.com/google/go-cmp v0.5.2
+	github.com/leanovate/gopter v0.2.9
 	github.com/sethvargo/go-envconfig v0.3.2
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/stretchr/testify v1.6.1

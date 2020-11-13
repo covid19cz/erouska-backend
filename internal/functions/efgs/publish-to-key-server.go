@@ -19,30 +19,23 @@ import (
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 //PublishKeysToKeyServer Publish exposure keys to Keys server.
-func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []keyserverapi.ExposureKey) error {
+func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []ExpKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.PublishKeysToKeyServer")
 
-	if len(keys) > config.MaxBatchSize {
-		batches := splitKeys(keys, config.MaxBatchSize)
+	// Create batches from keys but first filter out keys that are too old.
+	recentKeys := filterRecentKeys(keys, config.MaxIntervalAge)
+	batches := splitKeys(recentKeys, config.MaxKeysOnPublish, config.MaxSameStartIntervalKeys)
 
-		//rate limiting
+	//TODO rate limiting
 
-		for _, batch := range batches {
-			resp, err := signAndPublishKeys(ctx, config, haid, batch)
-			if err != nil {
-				logger.Debugf("Error when publishing keys: %v", err)
-				return err
-			}
-
-			logger.Infof("Batch of %v keys uploaded (%v sent), going on", resp.InsertedExposures, len(batch))
-		}
-	} else {
-		// single batch
-		_, err := signAndPublishKeys(ctx, config, haid, keys)
+	for _, batch := range batches {
+		resp, err := signAndPublishKeys(ctx, config, haid, batch)
 		if err != nil {
 			logger.Debugf("Error when publishing keys: %v", err)
 			return err
 		}
+
+		logger.Infof("Batch of %v keys uploaded (%v sent), going on", resp.InsertedExposures, len(batch))
 	}
 
 	logger.Info("Keys uploaded to Key server")
@@ -50,7 +43,7 @@ func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid str
 	return nil
 }
 
-func signAndPublishKeys(ctx context.Context, config *publishConfig, haid string, keys []keyserverapi.ExposureKey) (*keyserverapi.PublishResponse, error) {
+func signAndPublishKeys(ctx context.Context, config *publishConfig, haid string, keys ExpKeyBatch) (*keyserverapi.PublishResponse, error) {
 	logger := logging.FromContext(ctx).Named("efgs.signAndPublishKeys")
 
 	vc, err := requestNewVC(ctx, config)
@@ -203,7 +196,7 @@ func verifyCode(ctx context.Context, config *publishConfig, code string) (string
 	return r.VerificationToken, nil
 }
 
-func getCertificate(ctx context.Context, config *publishConfig, keys []keyserverapi.ExposureKey, token string, hmacKey []byte) (string, error) {
+func getCertificate(ctx context.Context, config *publishConfig, keys ExpKeyBatch, token string, hmacKey []byte) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.getCertificate")
 
 	hmac, err := efgsutils.CalculateExposureKeysHMAC(keys, hmacKey)
@@ -269,7 +262,7 @@ func getCertificate(ctx context.Context, config *publishConfig, keys []keyserver
 	return r.Certificate, nil
 }
 
-func publishKeys(ctx context.Context, config *publishConfig, haid string, keys []keyserverapi.ExposureKey, certificate string, secret []byte) (*keyserverapi.PublishResponse, error) {
+func publishKeys(ctx context.Context, config *publishConfig, haid string, keys ExpKeyBatch, certificate string, secret []byte) (*keyserverapi.PublishResponse, error) {
 	logger := logging.FromContext(ctx).Named("efgs.publishKeys")
 
 	keysCount := len(keys)
@@ -341,20 +334,4 @@ func publishKeys(ctx context.Context, config *publishConfig, haid string, keys [
 	}
 
 	return &r, nil
-}
-
-func splitKeys(buf []keyserverapi.ExposureKey, lim int) [][]keyserverapi.ExposureKey {
-	var chunk []keyserverapi.ExposureKey
-	chunks := make([][]keyserverapi.ExposureKey, 0, len(buf)/lim+1)
-
-	for len(buf) >= lim {
-		chunk, buf = buf[:lim], buf[lim:]
-		chunks = append(chunks, chunk)
-	}
-
-	if len(buf) > 0 {
-		chunks = append(chunks, buf[:])
-	}
-
-	return chunks
 }
