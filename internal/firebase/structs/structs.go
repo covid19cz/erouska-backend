@@ -15,14 +15,14 @@ type Registration struct {
 
 //RegistrationV1 DB entity for registration V1 - the legacy one.
 type RegistrationV1 struct {
-	FUID                  string `json:"fuid"`
-	Platform              string `json:"platform"`
-	PlatformVersion       string `json:"platformVersion"`
-	Manufacturer          string `json:"manufacturer"`
-	Model                 string `json:"model"`
-	Locale                string `json:"locale"`
-	PushRegistrationToken string `json:"pushRegistrationToken"`
-	CreatedAt             int64  `json:"createdAt"`
+	FUID                  string `firestore:"fuid" json:"fuid"`
+	Platform              string `firestore:"platform" json:"platform"`
+	PlatformVersion       string `firestore:"platformVersion" json:"platformVersion"`
+	Manufacturer          string `firestore:"manufacturer" json:"manufacturer"`
+	Model                 string `firestore:"model" json:"model"`
+	Locale                string `firestore:"locale" json:"locale"`
+	PushRegistrationToken string `firestore:"pushRegistrationToken" json:"pushRegistrationToken"`
+	CreatedAt             int64  `firestore:"createdAt" json:"createdAt"`
 }
 
 //NotificationCounter DB entity for notification counter.
