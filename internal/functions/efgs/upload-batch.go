@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -54,6 +55,8 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 
 	batches := splitBatch(keys, uploadConfig.BatchSizeLimit)
 
+	var errors []string
+
 	for _, batch := range batches {
 		var diagnosisKeys []*efgsapi.DiagnosisKey
 		for _, k := range batch {
@@ -68,21 +71,28 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 
 		resp, err := uploadBatch(ctx, &diagnosisKeyBatch, uploadConfig)
 		if err != nil {
-			return fmt.Errorf("Batch upload failed: %v", err)
+			errors = append(errors, fmt.Sprintf("Batch upload failed: %v", err))
+			continue
 		}
 
-		if resp.StatusCode != 201 { // nothing was saved to EFGS
-			logger.Debugf("Batch was partially invalid and therefore rejected")
-
-			if err := handleErrorUploadResponse(resp, uploadConfig, batch); err != nil {
-				return fmt.Errorf("Handling upload response ended with error: %s", err)
-			}
-		} else {
+		if resp.StatusCode == 201 {
 			if err := uploadConfig.Database.RemoveDiagnosisKeys(batch); err != nil {
-				return fmt.Errorf("Removing uploaded keys from database failed: %s", err)
+				errors = append(errors, fmt.Sprintf("Removing uploaded keys from database failed: %s", err))
+				continue
 			}
 			logger.Debugf("Batch %s successfully uploaded", uploadConfig.BatchTag)
+		} else { // nothing was saved to EFGS
+			logger.Debugf("Batch was partially invalid and therefore rejected")
+
+			if err := handleErrorUploadResponse(ctx, resp, uploadConfig, batch); err != nil {
+				errors = append(errors, fmt.Sprintf("Handling upload response ended with error: %s", err))
+				continue
+			}
 		}
+	}
+
+	if len(errors) != 0 {
+		return fmt.Errorf("Following errors have happened, only %v batches has been uploaded:\n%v", len(batches)-len(errors), strings.Join(errors, "\n"))
 	}
 
 	logger.Infof("%d batches successfully uploaded", len(batches))
@@ -166,16 +176,19 @@ func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *
 		return &parsedResponse, nil
 	default:
 		logger.Debug("Batch upload failed. No key was uploaded")
-		return &parsedResponse, nil
+		return &parsedResponse, fmt.Errorf("HTTP %v: %v", res.StatusCode, string(body))
 	}
 }
 
-func handleErrorUploadResponse(resp *efgsapi.UploadBatchResponse, uploadConfig *uploadConfig, keys []*efgsapi.DiagnosisKeyWrapper) error {
+func handleErrorUploadResponse(ctx context.Context, resp *efgsapi.UploadBatchResponse, uploadConfig *uploadConfig, keys []*efgsapi.DiagnosisKeyWrapper) error {
+	logger := logging.FromContext(ctx).Named("efgs.handleErrorUploadResponse")
+
 	if resp.StatusCode == 400 {
 		for _, key := range keys {
 			key.Retries++
 		}
 
+		logger.Debugf("Updating retries for failed keys")
 		return uploadConfig.Database.UpdateKeys(keys)
 	}
 
@@ -196,6 +209,7 @@ func handleErrorUploadResponse(resp *efgsapi.UploadBatchResponse, uploadConfig *
 		return err
 	}
 
+	logger.Debugf("Removing invalid keys from DB")
 	return uploadConfig.Database.RemoveInvalidKeys(keys)
 }
 
