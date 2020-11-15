@@ -145,7 +145,9 @@ func signBatch(ctx context.Context, efgsEnv efgsutils.Environment, diagnosisKey 
 		return "", err
 	}
 
-	logger.Infof("Batch signature in base64: %s\n", b64.StdEncoding.EncodeToString(detachedSignature))
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Batch signature in base64: %s\n", b64.StdEncoding.EncodeToString(detachedSignature))
+	}
 
 	return b64.StdEncoding.EncodeToString(detachedSignature), nil
 }
