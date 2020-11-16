@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-//CleanupDatabase Remove old (more than EXPOSURE_KEYS_EXPIRATION days) keys from database.
+//CleanupDatabase Remove old (more than EFGS_EXPOSURE_KEYS_EXPIRATION days) keys from database.
 func CleanupDatabase(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx).Named("efgs.CleanupDatabase")
-	keyExpiration, isSet := os.LookupEnv("EXPOSURE_KEYS_EXPIRATION")
+	keyExpiration, isSet := os.LookupEnv("EFGS_EXPOSURE_KEYS_EXPIRATION")
 	if !isSet {
-		err := fmt.Errorf("EXPOSURE_KEYS_EXPIRATION must be set")
+		err := fmt.Errorf("EFGS_EXPOSURE_KEYS_EXPIRATION must be set")
 		logger.Error(err)
 		sendErrorResponse(w, err)
 		return
