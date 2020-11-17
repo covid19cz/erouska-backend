@@ -35,6 +35,12 @@ type UserCounter struct {
 	UsersCount int `json:"usersCount"`
 }
 
+//PublisherCounter DB entity for publishers counter.
+type PublisherCounter struct {
+	PublishersCount int `json:"publishersCount"`
+	KeysCount       int `json:"keysCount"`
+}
+
 //VerificationCodeMetadata DB entity for verification code metadata.
 type VerificationCodeMetadata struct {
 	VsMetadata map[string]interface{} `json:"vsMetadata"`

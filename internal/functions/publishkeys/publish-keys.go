@@ -5,16 +5,20 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"firebase.google.com/go/db"
 	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/constants"
+	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	"github.com/covid19cz/erouska-backend/internal/functions/efgs"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsdatabase "github.com/covid19cz/erouska-backend/internal/functions/efgs/database"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/realtimedb"
+	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"github.com/dgrijalva/jwt-go"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -25,12 +29,18 @@ const (
 	defaultTransmissionRiskLevel = 2 // see docs for ExposureKey - "CONFIRMED will lead to TR 2"
 )
 
-var defaultVisitedCountries = []string{"AT", "DE", "DK", "ES", "IE", "NL", "PL"} // this could be a constant but we're in fckn Go
+type config struct {
+	keyServerConfig         *utils.KeyServerConfig
+	client                  *http.Client
+	realtimeDBClient        *realtimedb.Client
+	efgsdatabase            *efgsdatabase.Connection
+	defaultVisitedCountries []string
+}
 
 //PublishKeys Handler
 func PublishKeys(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
-	logger := logging.FromContext(ctx).Named("PublishKeys")
+	logger := logging.FromContext(ctx).Named("publish-keys.PublishKeys")
 
 	var request v1.PublishKeysRequestDevice
 
@@ -53,9 +63,22 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("Handling PublishKeys request: %+v", request)
 	}
 
+	config, err := loadConfig(ctx)
+	if err != nil {
+		logger.Errorf("Could not load config: %v", err)
+		http.Error(w, "Could not load config", http.StatusInternalServerError)
+		return
+	}
+
+	publishKeys(ctx, config, w, request)
+}
+
+func publishKeys(ctx context.Context, config *config, w http.ResponseWriter, request v1.PublishKeysRequestDevice) {
+	logger := logging.FromContext(ctx).Named("publish-keys.publishKeys")
+
 	var serverRequest = toServerRequest(&request)
 
-	serverResponse, err := passToKeyServer(ctx, serverRequest)
+	serverResponse, err := passToKeyServer(ctx, config, serverRequest)
 	if err != nil {
 		logger.Errorf("Could not obtain response from Key server: %v", err)
 		return
@@ -66,36 +89,42 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send response to client ASAP
-	sendResponseToClient(logger, w, toDeviceResponse(serverResponse))
+	sendResponseToClient(ctx, w, toDeviceResponse(serverResponse))
 
 	if serverResponse.Code == "" && serverResponse.ErrorMessage == "" {
 		logger.Infof("Successfully uploaded %v keys to Key server (%v keys sent)", serverResponse.InsertedExposures, len(serverRequest.Keys))
 
+		if err := updateCounters(ctx, config.realtimeDBClient, serverResponse.InsertedExposures+1); err != nil {
+			logger.Errorf("Could not update publishers counter: %+v", err)
+			// don't fail, this is not so important
+		}
+
 		if request.ConsentToFederation {
 			logger.Debug("Going to save uploaded keys to EFGS database")
 
-			if err = handleKeysUpload(ctx, request); err != nil {
+			if err = persistKeysForEfgs(ctx, config, request); err != nil {
 				logger.Errorf("Error while processing keys persistence: %v", err)
+				// don't fail, this is not so important
 			} else {
-				logger.Info("Saved uploaded keys to efgs database")
+				logger.Info("Saved uploaded keys to EFGS database")
 			}
 		} else {
 			logger.Info("Federation is disabled for this request")
 		}
 	} else {
-		// error has occurred!
+		// error has occurred! don't fail, just pass the error to client
 		logger.Errorf("Key server has refused the keys; code %v, message '%v'", serverResponse.Code, serverResponse.ErrorMessage)
 	}
 }
 
-func handleKeysUpload(ctx context.Context, request v1.PublishKeysRequestDevice) error {
-	logger := logging.FromContext(ctx).Named("handleKeysUpload")
+func persistKeysForEfgs(ctx context.Context, config *config, request v1.PublishKeysRequestDevice) error {
+	logger := logging.FromContext(ctx).Named("publish-keys.persistKeysForEfgs")
 
 	logger.Debugf("Handling keys upload")
 
 	visitedCountries := request.VisitedCountries
 	if len(visitedCountries) == 0 {
-		visitedCountries = defaultVisitedCountries
+		visitedCountries = config.defaultVisitedCountries
 	}
 
 	dos := extractDSOS(request)
@@ -119,11 +148,11 @@ func handleKeysUpload(ctx context.Context, request v1.PublishKeysRequestDevice) 
 		logger.Debugf("Saving keys into DB: %+v", keys)
 	}
 
-	return efgsdatabase.Database.PersistDiagnosisKeys(keys)
+	return config.efgsdatabase.PersistDiagnosisKeys(keys)
 }
 
-func passToKeyServer(ctx context.Context, request *v1.PublishKeysRequestServer) (*v1.PublishKeysResponseServer, error) {
-	logger := logging.FromContext(ctx).Named("passToKeyServer")
+func passToKeyServer(ctx context.Context, config *config, request *v1.PublishKeysRequestServer) (*v1.PublishKeysResponseServer, error) {
+	logger := logging.FromContext(ctx).Named("publish-keys.passToKeyServer")
 
 	blob, err := json.Marshal(request)
 	if err != nil {
@@ -131,13 +160,14 @@ func passToKeyServer(ctx context.Context, request *v1.PublishKeysRequestServer) 
 		return nil, err
 	}
 
-	keyServerConfig, err := utils.LoadKeyServerConfig(ctx)
+	req, err := http.NewRequest("POST", config.keyServerConfig.GetURL("v1/publish"), bytes.NewBuffer(blob))
 	if err != nil {
-		logger.Fatalf("Could not load key server config: %v", err)
+		logger.Debugf("Could not create request for Key server: %v", err)
 		return nil, err
 	}
+	req.Header.Add("Content-Type", "application/json")
 
-	response, err := http.Post(keyServerConfig.GetURL("v1/publish"), "application/json", bytes.NewBuffer(blob))
+	response, err := config.client.Do(req)
 	if err != nil {
 		logger.Debugf("Could not obtain response from Key server: %v", err)
 		return nil, err
@@ -166,7 +196,36 @@ func passToKeyServer(ctx context.Context, request *v1.PublishKeysRequestServer) 
 	return &serverResponse, nil
 }
 
-func sendResponseToClient(logger *zap.SugaredLogger, w http.ResponseWriter, response *v1.PublishKeysResponseDevice) {
+func loadConfig(ctx context.Context) (*config, error) {
+	secretsClient := secrets.Client{}
+
+	visitedCountries, err := secretsClient.Get("efgs-default-visited-countries")
+	if err != nil {
+		return nil, err
+	}
+
+	keyServerConfig, err := utils.LoadKeyServerConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	config := config{
+		keyServerConfig:  keyServerConfig,
+		client:           &http.Client{},
+		realtimeDBClient: &realtimedb.Client{},
+		efgsdatabase:     &efgsdatabase.Database,
+	}
+
+	if err = json.Unmarshal(visitedCountries, &config.defaultVisitedCountries); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func sendResponseToClient(ctx context.Context, w http.ResponseWriter, response *v1.PublishKeysResponseDevice) {
+	logger := logging.FromContext(ctx).Named("publish-keys.sendResponseToClient")
+
 	blob, err := json.Marshal(response)
 	if err != nil {
 		logger.Warnf("Could not serialize response for device: %v", err)
@@ -210,6 +269,47 @@ func extractDSOS(request v1.PublishKeysRequestDevice) int {
 
 	soi := int64(value.(float64))
 	return int((time.Now().Unix() - soi*600) / 86400)
+}
+
+func updateCounters(ctx context.Context, client *realtimedb.Client, keysCount int) error {
+	logger := logging.FromContext(ctx).Named("publish-keys.updateCounters")
+
+	var date = utils.GetTimeNow().Format("20060102")
+
+	// update daily counter
+	if err := updateCounter(ctx, client, constants.DbPublisherCountersPrefix+date, keysCount); err != nil {
+		logger.Warnf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
+		return err
+	}
+
+	// update total counter
+	if err := updateCounter(ctx, client, constants.DbPublisherCountersPrefix+"total", keysCount); err != nil {
+		logger.Warnf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func updateCounter(ctx context.Context, client *realtimedb.Client, dbKey string, keysCount int) error {
+	logger := logging.FromContext(ctx).Named("publish-keys.updateCounter")
+
+	return client.RunTransaction(ctx, dbKey, func(tn db.TransactionNode) (interface{}, error) {
+		var state structs.PublisherCounter
+
+		if err := tn.Unmarshal(&state); err != nil {
+			return nil, err
+		}
+
+		logger.Debugf("Found counter state, dbKey %v: %+v", dbKey, state)
+
+		state.PublishersCount++
+		state.KeysCount += keysCount
+
+		logger.Debugf("Saving updated counter state, dbKey %v: %+v", dbKey, state)
+
+		return state, nil
+	})
 }
 
 func toServerRequest(request *v1.PublishKeysRequestDevice) *v1.PublishKeysRequestServer {
