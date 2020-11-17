@@ -26,3 +26,6 @@ const TopicRegisterUser = "user-registered"
 
 //DbUserCountersPrefix Prefix of user counters data in Realtime DB.
 const DbUserCountersPrefix = "userCounters/"
+
+//DbPublisherCountersPrefix Prefix of publisher counters data in Realtime DB.
+const DbPublisherCountersPrefix = "publisherCounters/"
