@@ -116,6 +116,20 @@ steps:
     args:
       - functions
       - deploy
+      - PublishKeys
+      - --source=.
+      - --trigger-http
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=128
+      - --allow-unauthenticated
+      - --service-account=publish-keys@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
       - PrepareNewMetricsVersion
       - --source=.
       - --trigger-http
@@ -124,7 +138,7 @@ steps:
       - --memory=128
       - --allow-unauthenticated
       - --service-account=prepare-metrics@${PROJECT_ID}.iam.gserviceaccount.com
-      - --set-env-vars=PROJECT_ID=${PROJECT_ID},METRICS_PROJECT_ID=${_METRICS_PROJECT_ID}
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL},METRICS_PROJECT_ID=${_METRICS_PROJECT_ID}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:
@@ -138,21 +152,7 @@ steps:
       - --memory=128
       - --allow-unauthenticated
       - --service-account=download-metrics@${PROJECT_ID}.iam.gserviceaccount.com
-      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
-  - name: "gcr.io/cloud-builders/gcloud"
-    waitFor: ["-"]
-    args:
-      - functions
-      - deploy
-      - PublishKeys
-      - --source=.
-      - --trigger-http
-      - --region=europe-west1
-      - --runtime=go113
-      - --memory=128
-      - --allow-unauthenticated
-      - --service-account=publish-keys@${PROJECT_ID}.iam.gserviceaccount.com
-      - --env-vars-file=builders/efgs-env.yaml
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},KEY_SERVER_URL=${_KEY_SERVER_URL}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:
@@ -165,7 +165,7 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=efgs-upload-keys@${PROJECT_ID}.iam.gserviceaccount.com
-      - --env-vars-file=builders/efgs-env.yaml
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_UPLOAD_BATCH_SIZE=30,EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:
@@ -178,7 +178,10 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=efgs-download-keys@${PROJECT_ID}.iam.gserviceaccount.com
-      - --env-vars-file=builders/efgs-env.yaml
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+      - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+      - --set-env-vars=MAX_INTERVAL_AGE_ON_PUBLISH=${_MAX_INTERVAL_AGE_ON_PUBLISH},MAX_KEYS_ON_PUBLISH=${_MAX_KEYS_ON_PUBLISH},MAX_SAME_START_INTERVAL_KEYS=${_MAX_SAME_START_INTERVAL_KEYS}
+      - --set-env-vars=KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:
@@ -191,7 +194,10 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
-      - --env-vars-file=builders/efgs-env.yaml
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+      - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+      - --set-env-vars=MAX_INTERVAL_AGE_ON_PUBLISH=${_MAX_INTERVAL_AGE_ON_PUBLISH},MAX_KEYS_ON_PUBLISH=${_MAX_KEYS_ON_PUBLISH},MAX_SAME_START_INTERVAL_KEYS=${_MAX_SAME_START_INTERVAL_KEYS}
+      - --set-env-vars=KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL}
   - name: 'gcr.io/cloud-builders/gcloud'
     waitFor: ['-']
     args:
@@ -204,7 +210,9 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=efgs-remove-old-keys@${PROJECT_ID}.iam.gserviceaccount.com
-      - --env-vars-file=builders/efgs-env.yaml
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+      - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+      - --set-env-vars=EXPOSURE_KEYS_EXPIRATION=${_EXPOSURE_KEYS_EXPIRATION}
   - name: 'gcr.io/cloud-builders/gcloud'
     waitFor: ['-']
     args:
@@ -217,4 +225,6 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=efgs-issue-tst-verif-code@${PROJECT_ID}.iam.gserviceaccount.com
-      - --env-vars-file=builders/efgs-env.yaml
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_TESTING_VC_ISSUE_ENABLED=${_EFGS_TESTING_VC_ISSUE_ENABLED}
+      - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+      - --set-env-vars=KEY_SERVER_URL=${_KEY_SERVER_URL},VERIFICATION_SERVER_ADMIN_URL=${_VERIFICATION_SERVER_ADMIN_URL},VERIFICATION_SERVER_DEVICE_URL=${_VERIFICATION_SERVER_DEVICE_URL}
