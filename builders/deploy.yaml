@@ -177,6 +177,7 @@ steps:
       - --region=europe-west1
       - --runtime=go113
       - --memory=128
+      - --timeout=540s
       - --service-account=efgs-download-keys@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-env-vars=PROJECT_ID=${PROJECT_ID}
       - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
@@ -193,6 +194,7 @@ steps:
       - --region=europe-west1
       - --runtime=go113
       - --memory=128
+      - --timeout=540s
       - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-env-vars=PROJECT_ID=${PROJECT_ID}
       - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
