@@ -23,7 +23,7 @@ type ExpKey = keyserverapi.ExposureKey
 type ExpKeyBatch = []ExpKey
 
 //ToDiagnosisKey Converts ExposureKey to DiagnosisKey
-func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int32) *efgsapi.DiagnosisKey {
+func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int) *efgsapi.DiagnosisKey {
 	bytes, err := b64.StdEncoding.DecodeString(key.Key)
 	if err != nil {
 		panic(err) // this would be very, very bad!
@@ -37,7 +37,7 @@ func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountri
 		VisitedCountries:           visitedCountries,
 		Origin:                     origin,
 		ReportType:                 efgsapi.ReportType_CONFIRMED_TEST,
-		DaysSinceOnsetOfSymptoms:   daysSinceOnsetOfSymptoms,
+		DaysSinceOnsetOfSymptoms:   int32(daysSinceOnsetOfSymptoms),
 	}
 }
 
