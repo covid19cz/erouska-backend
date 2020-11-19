@@ -82,9 +82,14 @@ func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
 		visitedCountries = defaultVisitedCountries
 	}
 
+	dos := request.SymptomOnsetInterval
+	if dos <= 0 { // one would use MAX function if Go has some...
+		dos = 3
+	}
+
 	var keys []*efgsapi.DiagnosisKey
 	for _, k := range request.Keys {
-		diagnosisKey := efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, request.SymptomOnsetInterval)
+		diagnosisKey := efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, dos)
 		if diagnosisKey.TransmissionRiskLevel == 0 {
 			diagnosisKey.TransmissionRiskLevel = defaultTransmissionRiskLevel
 		}
