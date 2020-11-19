@@ -12,9 +12,11 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/pkg/api/v1"
+	"github.com/dgrijalva/jwt-go"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 const (
@@ -82,7 +84,8 @@ func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
 		visitedCountries = defaultVisitedCountries
 	}
 
-	dos := request.SymptomOnsetInterval
+	dos := extractDSOS(request)
+
 	if dos <= 0 { // one would use MAX function if Go has some...
 		dos = 3
 	}
@@ -159,6 +162,24 @@ func sendResponseToClient(logger *zap.SugaredLogger, w http.ResponseWriter, resp
 		logger.Warnf("Could not send response to device: %v", err)
 		return
 	}
+}
+
+func extractDSOS(request v1.PublishKeysRequestDevice) int {
+	// We parse the token but we don't care about signature validation.
+	token, _ := jwt.Parse(request.VerificationPayload, func(token *jwt.Token) (interface{}, error) {
+		return []byte("hello-world"), nil
+	})
+
+	// Here we certainly got validation error but we don't care, the validation was already done by Key server.
+	// If we got the token too, it's just enough.
+
+	if token == nil {
+		return -1
+	}
+
+	// Extract DSOS.
+	soi := int64(token.Claims.(jwt.MapClaims)["symptomOnsetInterval"].(float64))
+	return int((time.Now().Unix() - soi*600) / 86400)
 }
 
 func toServerRequest(request *v1.PublishKeysRequestDevice) *v1.PublishKeysRequestServer {
