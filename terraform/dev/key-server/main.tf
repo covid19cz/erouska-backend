@@ -5,6 +5,11 @@ terraform {
   }
 }
 
+provider "google" {
+  project = var.project
+  region  = var.region
+}
+
 module "en" {
   source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=v0.9.2"
 
@@ -26,10 +31,19 @@ module "en" {
   cloudsql_backup_location = var.cloudsql_backup_location
 }
 
-provider "google" {
+module "cdn" {
+
+  source  = "../../modules/cdn"
   project = var.project
   region  = var.region
+
+  name_prefix = "exposure-keys"
+
+  // TODO: this output is supported in newer terraform module version
+  //bucket_name = module.en.export_bucket
+  bucket_name = "exposure-notification-export-ejjud"
 }
+
 
 output "en" {
   value = module.en
