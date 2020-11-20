@@ -24,6 +24,45 @@ module "en" {
   generate_cron_schedule   = var.generate_cron_schedule
   cloudsql_max_connections = var.cloudsql_max_connections
   cloudsql_backup_location = var.cloudsql_backup_location
+
+  service_environment = {
+    jwks = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    generate = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    federationout = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    federationin = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    exposure = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    export = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    cleanup_exposure = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    cleanup_export = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+    key-rotation = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+      PROJECT_ID             = var.project
+    }
+  }
 }
 
 provider "google" {
