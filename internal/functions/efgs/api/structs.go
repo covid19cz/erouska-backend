@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+//ExpKey The exposure key.
+type ExpKey = keyserverapi.ExposureKey
+
+//ExpKeyBatch Batch (array) of exposure keys.
+type ExpKeyBatch = []ExpKey
+
 //IssueCodeRequest Issue code request to the Verification server
 type IssueCodeRequest = verifserverapi.IssueCodeRequest
 

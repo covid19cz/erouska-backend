@@ -19,7 +19,7 @@ import (
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 //PublishKeysToKeyServer Publish exposure keys to Keys server.
-func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []ExpKey) error {
+func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []efgsapi.ExpKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.PublishKeysToKeyServer")
 
 	// Create batches from keys but first filter out keys that are too old.
@@ -43,7 +43,7 @@ func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid str
 	return nil
 }
 
-func signAndPublishKeys(ctx context.Context, config *publishConfig, haid string, keys ExpKeyBatch) (*keyserverapi.PublishResponse, error) {
+func signAndPublishKeys(ctx context.Context, config *publishConfig, haid string, keys efgsapi.ExpKeyBatch) (*keyserverapi.PublishResponse, error) {
 	logger := logging.FromContext(ctx).Named("efgs.signAndPublishKeys")
 
 	vc, err := requestNewVC(ctx, config)
@@ -196,7 +196,7 @@ func verifyCode(ctx context.Context, config *publishConfig, code string) (string
 	return r.VerificationToken, nil
 }
 
-func getCertificate(ctx context.Context, config *publishConfig, keys ExpKeyBatch, token string, hmacKey []byte) (string, error) {
+func getCertificate(ctx context.Context, config *publishConfig, keys efgsapi.ExpKeyBatch, token string, hmacKey []byte) (string, error) {
 	logger := logging.FromContext(ctx).Named("efgs.getCertificate")
 
 	hmac, err := efgsutils.CalculateExposureKeysHMAC(keys, hmacKey)
@@ -262,7 +262,7 @@ func getCertificate(ctx context.Context, config *publishConfig, keys ExpKeyBatch
 	return r.Certificate, nil
 }
 
-func publishKeys(ctx context.Context, config *publishConfig, haid string, keys ExpKeyBatch, certificate string, secret []byte) (*keyserverapi.PublishResponse, error) {
+func publishKeys(ctx context.Context, config *publishConfig, haid string, keys efgsapi.ExpKeyBatch, certificate string, secret []byte) (*keyserverapi.PublishResponse, error) {
 	logger := logging.FromContext(ctx).Named("efgs.publishKeys")
 
 	keysCount := len(keys)

@@ -16,12 +16,6 @@ import (
 	"unsafe"
 )
 
-//ExpKey The exposure key.
-type ExpKey = keyserverapi.ExposureKey
-
-//ExpKeyBatch Batch (array) of exposure keys.
-type ExpKeyBatch = []ExpKey
-
 //ToDiagnosisKey Converts ExposureKey to DiagnosisKey
 func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int) *efgsapi.DiagnosisKey {
 	bytes, err := b64.StdEncoding.DecodeString(key.Key)
@@ -159,25 +153,25 @@ func signBatch(ctx context.Context, efgsEnv efgsutils.Environment, diagnosisKey 
 	return b64.StdEncoding.EncodeToString(detachedSignature), nil
 }
 
-func filterRecentKeys(keys ExpKeyBatch, maxAge int) ExpKeyBatch {
+func filterRecentKeys(keys efgsapi.ExpKeyBatch, maxAge int) efgsapi.ExpKeyBatch {
 	now := time.Now().Add(30 - time.Minute).Unix()
 
-	return filterKeys(keys, func(k ExpKey) bool {
+	return filterKeys(keys, func(k efgsapi.ExpKey) bool {
 		age := now - int64(k.IntervalNumber*600)
 		return age <= int64(maxAge)*24*int64(time.Hour.Seconds())
 	})
 }
 
-func splitKeys(keys []ExpKey, batchSize int, maxOverlapping int) (batches []ExpKeyBatch) {
+func splitKeys(keys []efgsapi.ExpKey, batchSize int, maxOverlapping int) (batches []efgsapi.ExpKeyBatch) {
 
-	addNewChunk := func(key ExpKey) {
-		batches = append(batches, ExpKeyBatch{key})
+	addNewChunk := func(key efgsapi.ExpKey) {
+		batches = append(batches, efgsapi.ExpKeyBatch{key})
 	}
 
 	// Determines whether the chunk is suitable for the key.
 	// 1) It must not have too much keys that overlap with the given one.
 	// 2) It must not have any unaligned keys.
-	isSuitable := func(chunk ExpKeyBatch, key ExpKey) bool {
+	isSuitable := func(chunk efgsapi.ExpKeyBatch, key efgsapi.ExpKey) bool {
 		if len(chunk) >= batchSize {
 			return false
 		}
@@ -230,7 +224,7 @@ func splitKeys(keys []ExpKey, batchSize int, maxOverlapping int) (batches []ExpK
 	return batches
 }
 
-func filterKeys(ss ExpKeyBatch, predicate func(key ExpKey) bool) (ret ExpKeyBatch) {
+func filterKeys(ss efgsapi.ExpKeyBatch, predicate func(key efgsapi.ExpKey) bool) (ret efgsapi.ExpKeyBatch) {
 	for _, s := range ss {
 		if predicate(s) {
 			ret = append(ret, s)
