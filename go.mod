@@ -9,6 +9,7 @@ require (
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/GoogleCloudPlatform/cloudsql-proxy v1.18.0
 	github.com/avast/retry-go v2.6.0+incompatible
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-pg/pg/v10 v10.3.2
 	github.com/golang/gddo v0.0.0-20200715224205-051695c33a3f
 	github.com/golang/protobuf v1.4.3
