@@ -150,14 +150,9 @@ func loadDownloadConfig(ctx context.Context) (*downloadConfig, error) {
 	config.URL = url
 	config.NBTLSPair = nbtlsPair
 	config.Client = client
-
-	publishConfig, err := loadPublishConfig(ctx)
-	if err != nil {
-		logger.Debugf("Could not load publish config: %v", err)
-		return nil, err
-	}
-
-	config.PublishConfig = publishConfig
+	config.PubSubClient = pubsub.Client{}
+	config.MutexManager = redismutex.ClientImpl{}
+	config.RedisClient = redis.ClientImpl{}
 
 	return &config, nil
 }
