@@ -3,6 +3,7 @@ package publishkeys
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/functions/efgs"
@@ -33,8 +34,16 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 
 	var request v1.PublishKeysRequestDevice
 
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&request); err != nil {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic("fuck")
+	}
+
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Request base64: %+v", base64.StdEncoding.EncodeToString(body))
+	}
+
+	if err := json.Unmarshal(body, &request); err != nil {
 		logger.Errorf("Could not deserialize request from device: %v", err)
 		http.Error(w, "Could not deserialize", http.StatusBadRequest)
 		return
@@ -56,13 +65,16 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("Received response from Key server: %+v", serverResponse)
 	}
 
+	// send response to client ASAP
+	sendResponseToClient(logger, w, toDeviceResponse(serverResponse))
+
 	if serverResponse.Code == "" && serverResponse.ErrorMessage == "" {
 		logger.Infof("Successfully uploaded %v keys to Key server (%v keys sent)", serverResponse.InsertedExposures, len(serverRequest.Keys))
 
 		if request.ConsentToFederation {
 			logger.Debug("Going to save uploaded keys to EFGS database")
 
-			if err = handleKeysUpload(request); err != nil {
+			if err = handleKeysUpload(ctx, request); err != nil {
 				logger.Errorf("Error while processing keys persistence: %v", err)
 			} else {
 				logger.Info("Saved uploaded keys to efgs database")
@@ -74,11 +86,13 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		// error has occurred!
 		logger.Errorf("Key server has refused the keys; code %v, message '%v'", serverResponse.Code, serverResponse.ErrorMessage)
 	}
-
-	sendResponseToClient(logger, w, toDeviceResponse(serverResponse))
 }
 
-func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
+func handleKeysUpload(ctx context.Context, request v1.PublishKeysRequestDevice) error {
+	logger := logging.FromContext(ctx).Named("handleKeysUpload")
+
+	logger.Debugf("Handling keys upload")
+
 	visitedCountries := request.VisitedCountries
 	if len(visitedCountries) == 0 {
 		visitedCountries = defaultVisitedCountries
@@ -90,6 +104,8 @@ func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
 		dos = 3
 	}
 
+	logger.Debugf("Extracted DSOS %v", dos)
+
 	var keys []*efgsapi.DiagnosisKey
 	for _, k := range request.Keys {
 		diagnosisKey := efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, dos)
@@ -97,6 +113,10 @@ func handleKeysUpload(request v1.PublishKeysRequestDevice) error {
 			diagnosisKey.TransmissionRiskLevel = defaultTransmissionRiskLevel
 		}
 		keys = append(keys, diagnosisKey)
+	}
+
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Saving keys into DB: %+v", keys)
 	}
 
 	return efgsdatabase.Database.PersistDiagnosisKeys(keys)
@@ -178,7 +198,17 @@ func extractDSOS(request v1.PublishKeysRequestDevice) int {
 	}
 
 	// Extract DSOS.
-	soi := int64(token.Claims.(jwt.MapClaims)["symptomOnsetInterval"].(float64))
+	if token.Claims == nil {
+		return -1
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	value, ok := claims["symptomOnsetInterval"]
+	if !ok {
+		return -1
+	}
+
+	soi := int64(value.(float64))
 	return int((time.Now().Unix() - soi*600) / 86400)
 }
 
