@@ -5,49 +5,118 @@ import (
 	"encoding/json"
 	"fmt"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
+	efgsconstants "github.com/covid19cz/erouska-backend/internal/functions/efgs/constants"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
-	"github.com/covid19cz/erouska-backend/internal/pubsub"
+	redisclient "github.com/go-redis/redis/v8"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
 
 //DownloadAndSaveKeys Downloads batch from EFGS.
-func DownloadAndSaveKeys(ctx context.Context, m pubsub.Message) error {
-	var payload efgsapi.BatchDownloadParams
-
-	if decodeErr := pubsub.DecodeJSONEvent(m, &payload); decodeErr != nil {
-		return fmt.Errorf("Error while parsing event payload: %v", decodeErr)
-	}
-
-	config, err := loadDownloadConfig(ctx)
-	if err != nil {
-		return err
-	}
-
-	return downloadAndSaveKeysBatch(ctx, config, payload)
-}
-
-//DownloadAndSaveYesterdaysKeys Downloads batch from yesterday from EFGS.
-func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
+func DownloadAndSaveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	logger := logging.FromContext(ctx).Named("efgs.DownloadAndSaveKeys")
 
 	config, err := loadDownloadConfig(ctx)
 	if err == nil {
-		err = downloadAndSaveKeysBatch(ctx, config, efgsapi.BatchDownloadParams{
-			Date: time.Now().Add(time.Hour * -24).Format("2006-01-02"),
-		})
+		err = downloadAndSaveKeys(ctx, config)
 	}
 
 	if err != nil {
+		logger.Errorf("Could not process: %+v", err)
 		http.Error(w, fmt.Sprintf("Error: %v", err), 500)
 	}
 }
 
-func downloadAndSaveKeysBatch(ctx context.Context, config *downloadConfig, params efgsapi.BatchDownloadParams) error {
+//DownloadAndSaveYesterdaysKeys Downloads batch from whole yesterday from EFGS.
+func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := logging.FromContext(ctx).Named("efgs.DownloadAndSaveYesterdaysKeys")
+
+	config, err := loadDownloadConfig(ctx)
+	if err != nil {
+		logger.Errorf("Could not load config: %+v", err)
+		http.Error(w, fmt.Sprintf("Error: %v", err), 500)
+		return
+	}
+
+	_, err = downloadAllRecursively(ctx, config, &efgsapi.BatchDownloadParams{
+		Date: time.Now().Add(time.Hour * -24).Format("2006-01-02"),
+	})
+
+	if err != nil {
+		logger.Errorf("Could not download all data: %+v", err)
+		http.Error(w, fmt.Sprintf("Error: %v", err), 500)
+	}
+}
+
+func downloadAndSaveKeys(ctx context.Context, config *downloadConfig) error {
+	logger := logging.FromContext(ctx).Named("efgs.downloadAndSaveKeys")
+
+	mutex, err := config.MutexManager.Lock(efgsconstants.MutexNameDownloadAndSaveKeys)
+	if err != nil {
+		return fmt.Errorf("Could not acquire '%v' mutex: %v", efgsconstants.MutexNameDownloadAndSaveKeys, err)
+	}
+	defer mutex.Unlock()
+
+	now := time.Now()
+
+	batchParams := efgsapi.BatchDownloadParams{
+		Date:     now.Format("2006-01-02"),
+		BatchTag: now.Format("20060102") + "-1",
+	}
+
+	logger.Debugf("Looking for batch params to be downloaded")
+
+	val, err := config.RedisClient.Get(efgsconstants.RedisKeyNextBatch)
+	if err != nil {
+		if err == redisclient.Nil {
+			logger.Debugf("Batch params wasn't found, using default: %v", batchParams)
+		} else {
+			err := fmt.Errorf("Error while querying Redis: %+v", err)
+			logger.Error(err)
+			return err
+		}
+	} else {
+		var savedBatchParams efgsapi.BatchDownloadParams
+		if err := json.Unmarshal([]byte(val), &savedBatchParams); err != nil {
+			err := fmt.Errorf("Could not unmarshall saved batch params: %+v", err)
+			logger.Error(err)
+			return err
+		}
+
+		if savedBatchParams.Date == batchParams.Date {
+			batchParams = savedBatchParams
+			logger.Debugf("Batch params found: %v", batchParams)
+		} else {
+			logger.Debugf("Found batch params from another day, discarding")
+		}
+	}
+
+	nextBatch, err := downloadAndSaveKeysBatch(ctx, config, batchParams)
+
+	if nextBatch != nil {
+		logger.Debugf("Next batch will be: %+v", nextBatch)
+		bytes, err := json.Marshal(*nextBatch)
+		if err != nil {
+			return err
+		}
+
+		if err = config.RedisClient.Set(efgsconstants.RedisKeyNextBatch, string(bytes), 0); err != nil {
+			logger.Errorf("Could not save next batch params to Redis: %+v", err)
+			return err
+		}
+	}
+
+	return err
+}
+
+func downloadAndSaveKeysBatch(ctx context.Context, config *downloadConfig, params efgsapi.BatchDownloadParams) (*efgsapi.BatchDownloadParams, error) {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAndSaveKeysBatch")
 
 	logger.Infof("About to download batch with tag '%v' for date %v!", params.BatchTag, params.Date)
@@ -57,28 +126,53 @@ func downloadAndSaveKeysBatch(ctx context.Context, config *downloadConfig, param
 	keys, err := downloadBatchByTag(ctx, config, params.Date, params.BatchTag)
 	if err != nil {
 		logger.Errorf("Could not download batch from EFGS: %v", err)
-		return err
+		return nil, err
 	}
 
 	if len(keys) == 0 {
 		logger.Infof("No keys returned from EFGS for date %v and batchTag '%v'", params.Date, params.BatchTag)
-		return nil
+		return nil, nil
 	}
 
 	logger.Infof("Successfully downloaded %v keys from EFGS, going to upload them", len(keys))
 
-	if err = publishAllKeys(ctx, config, keys); err != nil {
+	if err = enqueueForImport(ctx, config, keys); err != nil {
 		logger.Errorf("Could not download batch from EFGS: %v", err)
-		return err
+		return nil, err
 	}
 
-	logger.Infof("Successfully published downloaded keys to our Key server")
+	logger.Infof("Successfully enqueued downloaded keys for import to our Key server")
 
-	return nil
+	nextBatch := nextBatchParams(&params)
+
+	return &nextBatch, nil
 }
 
-func publishAllKeys(ctx context.Context, config *downloadConfig, keys []efgsapi.DiagnosisKey) error {
-	logger := logging.FromContext(ctx).Named("efgs.publishAllKeys")
+func nextBatchParams(last *efgsapi.BatchDownloadParams) efgsapi.BatchDownloadParams {
+	today := time.Now().Format("2006-01-02")
+	batchTagPrefix := time.Now().Format("20060102")
+
+	var nextBatchTag string
+
+	if last.Date == today && last.BatchTag != "" {
+		parts := strings.Split(last.BatchTag, "-")
+		nextID, err := strconv.Atoi(parts[1])
+		if err != nil {
+			panic(fmt.Sprintf("Unexpected format of EFGS batch tag: '%v'", last.BatchTag))
+		}
+		nextBatchTag = fmt.Sprintf("%v-%v", batchTagPrefix, nextID+1)
+	} else {
+		nextBatchTag = batchTagPrefix + "-2" // '2' because '1' is what one gets without explicit tag
+	}
+
+	return efgsapi.BatchDownloadParams{
+		Date:     today,
+		BatchTag: nextBatchTag,
+	}
+}
+
+func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsapi.DiagnosisKey) error {
+	logger := logging.FromContext(ctx).Named("efgs.enqueueForImport")
 
 	logger.Debugf("About to sort downloaded keys")
 
@@ -89,7 +183,7 @@ func publishAllKeys(ctx context.Context, config *downloadConfig, keys []efgsapi.
 		sortedKeys[mapKey] = append(sortedKeys[mapKey], key.ToExposureKey())
 	}
 
-	logger.Infof("Sorted downloaded keys into %v groups (countries)", len(sortedKeys))
+	logger.Debugf("Sorted downloaded keys into %v groups (countries)", len(sortedKeys))
 
 	var errors []string
 
@@ -100,15 +194,31 @@ func publishAllKeys(ctx context.Context, config *downloadConfig, keys []efgsapi.
 			continue
 		}
 
-		logger.Infof("Uploading %v keys from %v to our Key server", len(countryKeys), country)
+		// Create batches from country keys but first filter out keys that are too old.
+		recentKeys := filterRecentKeys(countryKeys, config.MaxIntervalAge)
+		batches := splitKeys(recentKeys, config.MaxKeysOnPublish, config.MaxSameStartIntervalKeys)
 
-		if err := PublishKeysToKeyServer(ctx, config.PublishConfig, haid, countryKeys); err != nil {
-			logger.Warnf("Could not upload %v keys from %v: %+v", len(countryKeys), country, err)
-			errors = append(errors, fmt.Sprintf("Could not upload %v keys from %v country", len(countryKeys), country))
-			continue
+		logger.Infof("Enqueuing %v batches for import with HAID %v", len(batches), haid)
+
+		for _, batch := range batches {
+			batchParams := efgsapi.BatchImportParams{
+				HAID: haid,
+				Keys: batch,
+			}
+
+			logger.Debugf("Enqueuing batch of %v keys from %v for import", len(batch), country)
+
+			if efgsutils.EfgsExtendedLogging {
+				logger.Debugf("Enqueued batch: %+v", batchParams)
+			}
+
+			if err := config.PubSubClient.Publish(efgsconstants.TopicNameImportKeys, batchParams); err != nil {
+				msg := fmt.Sprintf("Error while enqueuing keys from %v: %+v", country, err)
+				logger.Warn(msg)
+				errors = append(errors, msg)
+				continue
+			}
 		}
-
-		logger.Debugf("Successfully imported %v keys from %v", len(countryKeys), country)
 	}
 
 	if len(errors) != 0 {
@@ -186,15 +296,17 @@ func downloadBatchByTag(ctx context.Context, config *downloadConfig, date string
 		return nil, err
 	}
 
-	keys := batchResponse.Keys
+	return batchResponse.Keys, nil
+}
 
-	if len(resp.Header.Get("nextBatchTag")) > 0 && resp.Header.Get("nextBatchTag") != "null" {
-		batch, err := downloadBatchByTag(ctx, config, date, resp.Header.Get("nextBatchTag"))
-		if err != nil {
-			return nil, err
-		}
-		keys = append(keys, batch[:]...)
+func downloadAllRecursively(ctx context.Context, config *downloadConfig, params *efgsapi.BatchDownloadParams) (*efgsapi.BatchDownloadParams, error) {
+	nextBatch, err := downloadAndSaveKeysBatch(ctx, config, *params)
+	if err != nil {
+		return nil, err
+	}
+	if nextBatch != nil {
+		return downloadAllRecursively(ctx, config, nextBatch)
 	}
 
-	return keys, nil
+	return nil, nil
 }

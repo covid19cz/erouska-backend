@@ -85,6 +85,12 @@ type BatchDownloadParams struct {
 	BatchTag string `json:"batchTag"`
 }
 
+//BatchImportParams Struct for transferring downloaded keys
+type BatchImportParams struct {
+	HAID string      `json:"haid"`
+	Keys ExpKeyBatch `json:"keys"`
+}
+
 //DiagnosisKeyWrapper map json response from EFGS to local DiagnosisKey structure
 type DiagnosisKeyWrapper struct {
 	tableName                  struct{}  `pg:"diagnosis_keys,alias:dk"`

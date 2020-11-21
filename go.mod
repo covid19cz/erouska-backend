@@ -10,12 +10,14 @@ require (
 	github.com/GoogleCloudPlatform/cloudsql-proxy v1.18.0
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/go-pg/pg/v10 v10.3.2
+	github.com/go-pg/pg/v10 v10.7.0
+	github.com/go-redis/redis/v8 v8.4.0
+	github.com/go-redsync/redsync/v4 v4.0.3
 	github.com/golang/gddo v0.0.0-20200715224205-051695c33a3f
 	github.com/golang/protobuf v1.4.3
 	github.com/google/exposure-notifications-server v0.16.0
 	github.com/google/exposure-notifications-verification-server v0.16.0
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.3
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/leanovate/gopter v0.2.9
 	github.com/sethvargo/go-envconfig v0.3.2

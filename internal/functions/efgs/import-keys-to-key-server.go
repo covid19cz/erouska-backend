@@ -9,6 +9,7 @@ import (
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/pubsub"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"io/ioutil"
 	"math/rand"
@@ -18,27 +19,51 @@ import (
 
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-//PublishKeysToKeyServer Publish exposure keys to Keys server.
-func PublishKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []efgsapi.ExpKey) error {
-	logger := logging.FromContext(ctx).Named("efgs.PublishKeysToKeyServer")
+//ImportKeysToKeyServer Imports keys to Key server
+func ImportKeysToKeyServer(ctx context.Context, m pubsub.Message) error {
+	logger := logging.FromContext(ctx).Named("efgs.ImportKeysToKeyServer")
 
-	// Create batches from keys but first filter out keys that are too old.
-	recentKeys := filterRecentKeys(keys, config.MaxIntervalAge)
-	batches := splitKeys(recentKeys, config.MaxKeysOnPublish, config.MaxSameStartIntervalKeys)
+	var payload efgsapi.BatchImportParams
+
+	if decodeErr := pubsub.DecodeJSONEvent(m, &payload); decodeErr != nil {
+		err := fmt.Errorf("Error while parsing event payload: %v", decodeErr)
+		logger.Error(err)
+		return err
+	}
+
+	config, err := loadPublishConfig(ctx)
+	if err != nil {
+		err := fmt.Errorf("Could not load publish config: %+v", err)
+		logger.Error(err)
+		return err
+	}
+
+	return importKeysToKeyServer(ctx, config, payload.HAID, payload.Keys)
+}
+
+func importKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []efgsapi.ExpKey) error {
+	logger := logging.FromContext(ctx).Named("efgs.importKeysToKeyServer")
+
+	keysCount := len(keys)
+
+	// Sanity check
+	if keysCount > config.MaxKeysOnPublish {
+		msg := fmt.Sprintf("Expected <= %v keys, %v given!!", config.MaxKeysOnPublish, keysCount)
+		logger.Error(msg)
+		panic(msg)
+	}
+
+	logger.Debugf("Going to import batch of %v keys with HAID %v", keysCount, haid)
 
 	//TODO rate limiting
 
-	for _, batch := range batches {
-		resp, err := signAndPublishKeys(ctx, config, haid, batch)
-		if err != nil {
-			logger.Debugf("Error when publishing keys: %v", err)
-			return err
-		}
-
-		logger.Infof("Batch of %v keys uploaded (%v sent), going on", resp.InsertedExposures, len(batch))
+	resp, err := signAndPublishKeys(ctx, config, haid, keys)
+	if err != nil {
+		logger.Errorf("Error when publishing keys: %v", err)
+		return err
 	}
 
-	logger.Info("Keys uploaded to Key server")
+	logger.Infof("Batch of %v keys with HAID %v uploaded (%v sent)", resp.InsertedExposures, haid, keysCount)
 
 	return nil
 }
@@ -295,8 +320,6 @@ func publishKeys(ctx context.Context, config *publishConfig, haid string, keys e
 
 	if efgsutils.EfgsExtendedLogging {
 		logger.Debugf("Publishing %v keys with HAID %v. Request: %+v", keysCount, haid, req)
-	} else {
-		logger.Debugf("Publishing %v keys with HAID %v", keysCount, haid)
 	}
 
 	response, err := config.Client.Do(req)
@@ -330,7 +353,7 @@ func publishKeys(ctx context.Context, config *publishConfig, haid string, keys e
 	}
 
 	if r.InsertedExposures != keysCount {
-		logger.Infof("Not all exposures were inserted: %v sent, %v inserted", keysCount, r.InsertedExposures)
+		logger.Debugf("Not all exposures were inserted: %v sent, %v inserted", keysCount, r.InsertedExposures)
 	}
 
 	return &r, nil

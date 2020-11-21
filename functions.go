@@ -2,8 +2,6 @@ package functions
 
 import (
 	"context"
-	"github.com/covid19cz/erouska-backend/internal/pubsub"
-
 	"github.com/covid19cz/erouska-backend/internal/functions/changepushtoken"
 	"github.com/covid19cz/erouska-backend/internal/functions/coviddata"
 	"github.com/covid19cz/erouska-backend/internal/functions/efgs"
@@ -12,6 +10,7 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/functions/publishkeys"
 	"github.com/covid19cz/erouska-backend/internal/functions/registerehrid"
 	"github.com/covid19cz/erouska-backend/internal/functions/registernotification"
+	"github.com/covid19cz/erouska-backend/internal/pubsub"
 
 	"net/http"
 )
@@ -80,14 +79,19 @@ func EfgsUploadKeys(w http.ResponseWriter, r *http.Request) {
 	efgs.UploadBatch(w, r)
 }
 
-// EfgsDownloadKeys downloads EFGS keys batch
-func EfgsDownloadKeys(ctx context.Context, m pubsub.Message) error {
-	return efgs.DownloadAndSaveKeys(ctx, m)
+// EfgsDownloadKeys downloads EFGS keys - most recent batch
+func EfgsDownloadKeys(w http.ResponseWriter, r *http.Request) {
+	efgs.DownloadAndSaveKeys(w, r)
 }
 
 // EfgsDownloadYesterdaysKeys downloads EFGS keys batch from whole yesterday
 func EfgsDownloadYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	efgs.DownloadAndSaveYesterdaysKeys(w, r)
+}
+
+//EfgsImportKeys Imports given keys
+func EfgsImportKeys(ctx context.Context, m pubsub.Message) error {
+	return efgs.ImportKeysToKeyServer(ctx, m)
 }
 
 //EfgsRemoveOldKeys handler.
