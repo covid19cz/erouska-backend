@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	efgsdatabase "github.com/covid19cz/erouska-backend/internal/functions/efgs/database"
+	"github.com/covid19cz/erouska-backend/internal/functions/efgs/redis"
+	"github.com/covid19cz/erouska-backend/internal/functions/efgs/redismutex"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/pubsub"
 	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/sethvargo/go-envconfig"
@@ -27,21 +30,24 @@ type uploadConfig struct {
 }
 
 type publishConfig struct {
-	VerificationServer       *utils.VerificationServerConfig
-	KeyServer                *utils.KeyServerConfig
-	Client                   *http.Client
-	MaxKeysOnPublish         int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
-	MaxIntervalAge           int `env:"MAX_INTERVAL_AGE_ON_PUBLISH,default=15"`
-	MaxSameStartIntervalKeys int `env:"MAX_SAME_START_INTERVAL_KEYS,default=15"`
+	VerificationServer *utils.VerificationServerConfig
+	KeyServer          *utils.KeyServerConfig
+	Client             *http.Client
+	MaxKeysOnPublish   int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
 }
 
 type downloadConfig struct {
-	Env           efgsutils.Environment
-	Client        *http.Client
-	URL           *urlutils.URL
-	NBTLSPair     *efgsutils.X509KeyPair
-	HaidMappings  map[string]string
-	PublishConfig *publishConfig
+	Env                      efgsutils.Environment
+	Client                   *http.Client
+	URL                      *urlutils.URL
+	NBTLSPair                *efgsutils.X509KeyPair
+	HaidMappings             map[string]string
+	PubSubClient             pubsub.EventPublisher
+	RedisClient              redis.Client
+	MutexManager             redismutex.MutexManager
+	MaxKeysOnPublish         int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
+	MaxIntervalAge           int `env:"MAX_INTERVAL_AGE_ON_PUBLISH,default=15"`
+	MaxSameStartIntervalKeys int `env:"MAX_SAME_START_INTERVAL_KEYS,default=15"`
 }
 
 func loadUploadConfig(ctx context.Context) (*uploadConfig, error) {
@@ -121,6 +127,9 @@ func loadDownloadConfig(ctx context.Context) (*downloadConfig, error) {
 	env := efgsutils.GetEfgsEnvironmentOrFail()
 
 	var config downloadConfig
+	if err := envconfig.Process(ctx, &config); err != nil {
+		return nil, err
+	}
 
 	secretsClient := secrets.Client{}
 	bytes, err := secretsClient.Get("efgs-haid-mappings")

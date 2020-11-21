@@ -19,6 +19,15 @@ locals {
   efgsdownloadkeys_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/secretmanager.secretAccessor",
+    "roles/redis.editor",
+    "roles/pubsub.publisher",
+  ]
+
+  # DownloadKeys - invoker
+
+  efgsdownkeys_invoker_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/iam.serviceAccountUser"
   ]
 
   # DownloadYesterdaysKeys
@@ -33,6 +42,13 @@ locals {
   efgsdownyestkeys_invoker_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/iam.serviceAccountUser"
+  ]
+
+  # ImportKeys
+
+  efgsimportkeys_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/secretmanager.secretAccessor",
   ]
 
   # RemoveOldKeys
@@ -116,6 +132,11 @@ resource "google_cloud_scheduler_job" "efgsuploadkeys-worker" {
 
 # DownloadKeys
 
+data "google_cloudfunctions_function" "efgsdownkeys" {
+  name    = "EfgsDownloadKeys"
+  project = var.project
+}
+
 resource "google_service_account" "efgsdownloadkeys" {
   account_id   = "efgs-download-keys"
   display_name = "EfgsDownloadKeys cloud function service account"
@@ -125,6 +146,44 @@ resource "google_project_iam_member" "efgsdownloadkeys" {
   count  = length(local.efgsdownloadkeys_roles)
   role   = local.efgsdownloadkeys_roles[count.index]
   member = "serviceAccount:${google_service_account.efgsdownloadkeys.email}"
+}
+
+# DownloadKeys - invoker
+
+resource "google_service_account" "efgsdownkeys-invoker" {
+  account_id   = "efgsdownkeys-invoker-sa"
+  display_name = "EfgsDownloadKeys invoker"
+}
+
+resource "google_project_iam_member" "efgsdownkeys-invoker" {
+  count  = length(local.efgsdownkeys_invoker_roles)
+  role   = local.efgsdownkeys_invoker_roles[count.index]
+  member = "serviceAccount:${google_service_account.efgsdownkeys-invoker.email}"
+}
+
+resource "google_cloud_scheduler_job" "efgsdownkeys-worker" {
+  name             = "efgsdownkeys-worker"
+  region           = var.cloudscheduler_location
+  schedule         = "*/15 * * * *"
+  time_zone        = "Europe/Prague"
+  attempt_deadline = "600s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "GET"
+    uri         = data.google_cloudfunctions_function.efgsdownkeys.https_trigger_url
+    oidc_token {
+      audience              = data.google_cloudfunctions_function.efgsdownkeys.https_trigger_url
+      service_account_email = google_service_account.efgsdownkeys-invoker.email
+    }
+  }
+
+  depends_on = [
+    google_project_service.services["cloudscheduler.googleapis.com"],
+  ]
 }
 
 # DownloadYesterdaysKeys
@@ -181,6 +240,24 @@ resource "google_cloud_scheduler_job" "efgsdownyestkeys-worker" {
   depends_on = [
     google_project_service.services["cloudscheduler.googleapis.com"],
   ]
+}
+
+# ImportKeys
+
+data "google_cloudfunctions_function" "efgsimportkeys" {
+  name    = "EfgsImportKeys"
+  project = var.project
+}
+
+resource "google_service_account" "efgsimportkeys" {
+  account_id   = "efgs-import-keys"
+  display_name = "EfgsImportKeys cloud function service account"
+}
+
+resource "google_project_iam_member" "efgsimportkeys" {
+  count  = length(local.efgsimportkeys_roles)
+  role   = local.efgsimportkeys_roles[count.index]
+  member = "serviceAccount:${google_service_account.efgsimportkeys.email}"
 }
 
 # RemoveOldKeys
