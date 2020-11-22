@@ -3,6 +3,7 @@ package efgs
 import (
 	"encoding/json"
 	"fmt"
+	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
@@ -18,8 +19,8 @@ func TestSplitKeysProp(t *testing.T) {
 	intervalNumberGen := gen.Int32Range(250000, 450000)
 	intervalCountGen := gen.Int32Range(1, 144)
 
-	keyGen := gopter.CombineGens(gen.AlphaString(), intervalNumberGen, intervalCountGen).Map(func(v *gopter.GenResult) ExpKey {
-		key := ExpKey{}
+	keyGen := gopter.CombineGens(gen.AlphaString(), intervalNumberGen, intervalCountGen).Map(func(v *gopter.GenResult) efgsapi.ExpKey {
+		key := efgsapi.ExpKey{}
 
 		for i, value := range v.Result.([]interface{}) {
 			switch i {
@@ -41,13 +42,13 @@ func TestSplitKeysProp(t *testing.T) {
 
 	properties.Property("splits random batches to valid", prop.ForAll(
 		func(keysCount uint16, batchSize int, maxOverlapping int) bool {
-			var keys []ExpKey
+			var keys []efgsapi.ExpKey
 			for i := 0; i < int(keysCount); i++ {
 				key, b := keyGen.Sample()
 				if !b {
 					panic(":-(")
 				}
-				keys = append(keys, key.(ExpKey))
+				keys = append(keys, key.(efgsapi.ExpKey))
 			}
 
 			batches := splitKeys(keys, batchSize, maxOverlapping)
@@ -71,7 +72,7 @@ func TestSplitKeysProp(t *testing.T) {
 
 func TestSplitKeys(t *testing.T) {
 	type args struct {
-		keys           []ExpKey
+		keys           []efgsapi.ExpKey
 		batchSize      int
 		maxOverlapping int
 	}
@@ -79,14 +80,14 @@ func TestSplitKeys(t *testing.T) {
 	tests := []struct {
 		name            string
 		args            args
-		wantChunks      [][]ExpKey
+		wantChunks      [][]efgsapi.ExpKey
 		wantMatchResult bool
 		wantChunksCount int
 	}{
 		{
 			name: "basic",
 			args: args{
-				keys: []ExpKey{
+				keys: []efgsapi.ExpKey{
 					{Key: "a", IntervalNumber: 10, IntervalCount: 0, TransmissionRisk: 0},
 					{Key: "b", IntervalNumber: 0, IntervalCount: 0, TransmissionRisk: 0},
 					{Key: "c", IntervalNumber: 10, IntervalCount: 0, TransmissionRisk: 0},
@@ -99,7 +100,7 @@ func TestSplitKeys(t *testing.T) {
 				batchSize:      50,
 				maxOverlapping: 2,
 			},
-			wantChunks: [][]ExpKey{
+			wantChunks: [][]efgsapi.ExpKey{
 				{
 					{Key: "b", IntervalNumber: 0, IntervalCount: 0, TransmissionRisk: 0},
 					{Key: "g", IntervalNumber: 0, IntervalCount: 2, TransmissionRisk: 0},
@@ -167,7 +168,7 @@ func TestSplitKeys(t *testing.T) {
 	}
 }
 
-func loadTestingKeys(suffix string) (efgsDownloadedKeys []ExpKey) {
+func loadTestingKeys(suffix string) (efgsDownloadedKeys []efgsapi.ExpKey) {
 	bytes, err := ioutil.ReadFile(fmt.Sprintf("../../../test/data/efgs-downloaded-keys-%v.json", suffix))
 	if err != nil {
 		panic(err)
@@ -182,7 +183,7 @@ func loadTestingKeys(suffix string) (efgsDownloadedKeys []ExpKey) {
 
 // This is more-or-less copied from https://github.com/google/exposure-notifications-server/blob/release-0.9/internal/publish/model/exposure_model.go#L418
 // because that is the source of truth in this case.
-func checkKeyServerBatch(entities []ExpKey, maxSize int, maxOverlapping int) error {
+func checkKeyServerBatch(entities []efgsapi.ExpKey, maxSize int, maxOverlapping int) error {
 	batchSize := len(entities)
 
 	if batchSize == 0 {
