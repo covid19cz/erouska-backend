@@ -27,6 +27,7 @@ import (
 const (
 	countryOfOrigin              = "CZ"
 	defaultTransmissionRiskLevel = 2 // see docs for ExposureKey - "CONFIRMED will lead to TR 2"
+	defaultDSOS                  = 3 // "days since onset of symptoms" - this is a good default/fallback value because it's taken as serious by the EN API
 )
 
 type config struct {
@@ -127,10 +128,12 @@ func persistKeysForEfgs(ctx context.Context, config *config, request v1.PublishK
 		visitedCountries = config.defaultVisitedCountries
 	}
 
+	// Days since onset of symptoms
+	// Try to read it from VC and if not present, use the default value.
 	dos := extractDSOS(request)
 
 	if dos <= 0 { // one would use MAX function if Go has some...
-		dos = 3
+		dos = defaultDSOS
 	}
 
 	logger.Debugf("Extracted DSOS %v", dos)
