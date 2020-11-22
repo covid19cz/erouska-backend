@@ -26,6 +26,19 @@ module "en" {
   cloudsql_backup_location = var.cloudsql_backup_location
 }
 
+module "cdn" {
+
+  source  = "../../modules/cdn"
+  project = var.project
+  region  = var.region
+
+  name_prefix = "exposure-keys"
+
+  // TODO: this output is supported in newer terraform module version
+  //bucket_name = module.en.export_bucket
+  bucket_name = "exposure-notification-export-qhqcx"
+}
+
 provider "google" {
   project = var.project
   region  = var.region
