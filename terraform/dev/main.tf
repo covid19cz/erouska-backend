@@ -4,6 +4,7 @@ terraform {
     prefix = "terraform-dev/erouska-backend/state"
   }
 }
+resource "null_resource" "example" {}
 
 module "erouska" {
 
