@@ -9,9 +9,10 @@ import (
 )
 import "github.com/hashicorp/go-retryablehttp"
 
-//NewThrottlingAwareClient Creates new client that retries on HTTP 429.
-func NewThrottlingAwareClient(requestLogger func(format string, args ...interface{})) *http.Client {
+//NewThrottlingAwareClient Wraps given client and handles retries on HTTP 429.
+func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format string, args ...interface{})) *http.Client {
 	client := retryablehttp.NewClient()
+	client.HTTPClient = httpClient
 	client.Logger = debugLogger{inner: requestLogger}
 
 	client.RetryMax = 5

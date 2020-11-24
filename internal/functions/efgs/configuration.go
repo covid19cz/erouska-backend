@@ -12,6 +12,7 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/pubsub"
 	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"github.com/covid19cz/erouska-backend/internal/utils"
+	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
 	"github.com/sethvargo/go-envconfig"
 	"net/http"
 	urlutils "net/url"
@@ -73,11 +74,14 @@ func loadUploadConfig(ctx context.Context) (*uploadConfig, error) {
 		return nil, err
 	}
 
-	config.Client, err = efgsutils.NewEFGSClient(ctx, config.NBTLSPair)
+	efgsClient, err := efgsutils.NewEFGSClient(ctx, config.NBTLSPair)
 	if err != nil {
 		logger.Debug("Could not create EFGS client")
 		return nil, err
 	}
+
+	clientLogger := logging.FromContext(ctx).Named("efgs.efgs-client")
+	config.Client = httputils.NewThrottlingAwareClient(efgsClient, clientLogger.Debugf)
 
 	maxBatchSize, isSet := os.LookupEnv("EFGS_UPLOAD_BATCH_SIZE")
 	if !isSet {
@@ -116,7 +120,9 @@ func loadPublishConfig(ctx context.Context) (*publishConfig, error) {
 
 	config.KeyServer = keyServerConfig
 	config.VerificationServer = verificationServerConfig
-	config.Client = &http.Client{}
+
+	clientLogger := logging.FromContext(ctx).Named("efgs.publish-client")
+	config.Client = httputils.NewThrottlingAwareClient(&http.Client{}, clientLogger.Debugf)
 
 	return &config, nil
 }
@@ -149,16 +155,18 @@ func loadDownloadConfig(ctx context.Context) (*downloadConfig, error) {
 
 	url := efgsutils.GetEfgsURLOrFail(env)
 
-	client, err := efgsutils.NewEFGSClient(ctx, nbtlsPair)
+	efgsClient, err := efgsutils.NewEFGSClient(ctx, nbtlsPair)
 	if err != nil {
 		logger.Debugf("Could not create EFGS client: %v", err)
 		return nil, err
 	}
 
+	clientLogger := logging.FromContext(ctx).Named("efgs.efgs-client")
+	config.Client = httputils.NewThrottlingAwareClient(efgsClient, clientLogger.Debugf)
+
 	config.Env = env
 	config.URL = url
 	config.NBTLSPair = nbtlsPair
-	config.Client = client
 	config.PubSubClient = pubsub.Client{}
 	config.MutexManager = redismutex.ClientImpl{}
 	config.RedisClient = redis.ClientImpl{}
