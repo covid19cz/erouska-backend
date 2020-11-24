@@ -55,8 +55,6 @@ func importKeysToKeyServer(ctx context.Context, config *publishConfig, haid stri
 
 	logger.Debugf("Going to import batch of %v keys with HAID %v", keysCount, haid)
 
-	//TODO rate limiting
-
 	resp, err := signAndPublishKeys(ctx, config, haid, keys)
 	if err != nil {
 		logger.Errorf("Error when publishing keys: %v", err)
