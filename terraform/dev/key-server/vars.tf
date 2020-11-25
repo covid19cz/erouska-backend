@@ -47,7 +47,7 @@ variable "db_user" {
 }
 
 variable "db_version" {
-  type = string
+  type    = string
   default = "POSTGRES_11"
 }
 
