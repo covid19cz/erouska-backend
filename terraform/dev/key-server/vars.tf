@@ -38,7 +38,17 @@ variable "db_location" {
 # The name of the database.
 variable "db_name" {
   type    = string
-  default = "en-server"
+  default = "main"
+}
+
+variable "db_user" {
+  type    = string
+  default = "notification"
+}
+
+variable "db_version" {
+  type = string
+  default = "POSTGRES_11"
 }
 
 # The region for the networking components.
@@ -192,14 +202,6 @@ terraform {
     google-beta = {
       source  = "hashicorp/google-beta"
       version = "~> 3.36"
-    }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 1.4"
-    }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 2.1"
     }
     random = {
       source  = "hashicorp/random"
