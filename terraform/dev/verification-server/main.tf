@@ -29,7 +29,6 @@ module "vf" {
   redis_cache_size           = var.redis_cache_size
 
   service_environment = var.service_environment
-
 }
 
 provider "google" {
