@@ -192,30 +192,3 @@ variable "enx_redirect_domain_map" {
   default     = []
   description = "Redirect domains and environments."
 }
-
-terraform {
-  required_version = ">= 0.13.1"
-
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 3.38"
-    }
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = "~> 3.38"
-    }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 1.4"
-    }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 2.1"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 2.3"
-    }
-  }
-}

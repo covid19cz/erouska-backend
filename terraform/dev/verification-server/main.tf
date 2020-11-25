@@ -6,13 +6,14 @@ terraform {
 }
 
 module "vf" {
-  source = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform?ref=v0.9.0"
+  source = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform?ref=v0.17.0"
 
   project = var.project
   region  = var.region
 
   database_tier         = var.database_tier
   database_disk_size_gb = var.database_disk_size_gb
+  database_version      = "POSTGRES_12"
 
   cloudscheduler_location = var.cloudscheduler_location
   appengine_location      = var.appengine_location
