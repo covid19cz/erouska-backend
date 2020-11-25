@@ -11,7 +11,7 @@ provider "google" {
 }
 
 module "en" {
-  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=v0.9.2"
+  source = "git::https://github.com/vranystepan/exposure-notifications-server.git//terraform?ref=59062a8"
 
   project = var.project
   region  = var.region
@@ -24,11 +24,13 @@ module "en" {
   network_location         = var.network_location
   db_location              = var.db_location
   db_name                  = var.db_name
+  db_user                  = var.db_user
   cloudsql_tier            = var.cloudsql_tier
   cloudsql_disk_size_gb    = var.cloudsql_disk_size_gb
   generate_cron_schedule   = var.generate_cron_schedule
   cloudsql_max_connections = var.cloudsql_max_connections
   cloudsql_backup_location = var.cloudsql_backup_location
+  db_version               = var.db_version
 
   service_environment = {
     jwks = {
@@ -48,8 +50,11 @@ module "en" {
       PROJECT_ID             = var.project
     }
     exposure = {
-      OBSERVABILITY_EXPORTER = "NOOP"
-      PROJECT_ID             = var.project
+      OBSERVABILITY_EXPORTER       = "NOOP"
+      PROJECT_ID                   = var.project
+      MAX_KEYS_ON_PUBLISH          = 50
+      REVISION_TOKEN_KEY_ID        = "projects/erouska-key-server-dev/locations/europe-west1/keyRings/revision-tokens/cryptoKeys/token-key"
+      MAX_SAME_START_INTERVAL_KEYS = 15
     }
     export = {
       OBSERVABILITY_EXPORTER = "NOOP"
