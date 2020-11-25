@@ -1,7 +1,7 @@
 # erouska 2.0 - backend
 ----
 ![tests](https://github.com/covid19cz/erouska-backend/workflows/tests/badge.svg)
-[![Codeac](https://static.codeac.io/badges/2-315938389.svg "Codeac")](https://app.codeac.io/github/jiritichy/erouska-backend)
+[![Codeac](https://static.codeac.io/badges/2-281468818.svg "Codeac")](https://app.codeac.io/github/covid19cz/erouska-backend)
 
 ## Deployment
 ```
