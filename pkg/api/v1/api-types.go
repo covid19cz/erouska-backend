@@ -9,8 +9,8 @@ backward-compatible way and when it's not possible, copied to `v2` and changed t
 type RegisterEhridRequest struct {
 	Platform              string `json:"platform" validate:"required,oneof=android ios"`
 	PlatformVersion       string `json:"platformVersion" validate:"required"`
-	Manufacturer          string `json:"manufacturer" validate:"required"`
-	Model                 string `json:"model" validate:"required"`
+	Manufacturer          string `json:"manufacturer"`
+	Model                 string `json:"model"`
 	Locale                string `json:"locale" validate:"required"`
 	PushRegistrationToken string `json:"pushRegistrationToken"`
 }
