@@ -40,7 +40,9 @@ func init() {
 
 		_, err := client.Ping(ctx).Result()
 		if err != nil {
-			panic(fmt.Sprintf("Connection to Redis failed:%v", err))
+			err := fmt.Errorf("Connection to Redis failed:%v", err)
+			logger.Error(err)
+			panic(err)
 		}
 
 		logger.Debugf("Connected to EFGS Redis at %v", addr)
