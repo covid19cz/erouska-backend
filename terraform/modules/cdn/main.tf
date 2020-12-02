@@ -18,7 +18,7 @@ resource "google_compute_global_forwarding_rule" "https" {
 
 resource "google_compute_target_http_proxy" "http" {
   name    = "${var.name_prefix}-serving-target-proxy"
-  url_map = google_compute_url_map.main.id
+  url_map = var.https_redirect == false ? google_compute_url_map.main.id : join("", google_compute_url_map.https_redirect.*.self_link)
 }
 
 resource "google_compute_target_https_proxy" "https" {
@@ -31,6 +31,16 @@ resource "google_compute_target_https_proxy" "https" {
 resource "google_compute_url_map" "main" {
   name            = "${var.name_prefix}-serving"
   default_service = google_compute_backend_bucket.exposure_keys_serving.self_link
+}
+
+resource "google_compute_url_map" "https_redirect" {
+  count   = var.https_redirect ? 1 : 0
+  name    = "${var.name_prefix}-https-redirect"
+  default_url_redirect {
+    https_redirect         = true
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+    strip_query            = false
+  }
 }
 
 resource "google_compute_backend_bucket" "exposure_keys_serving" {

@@ -36,6 +36,8 @@ module "cdn" {
 
   domains = ["cdn.erouska.cz"]
 
+  https_redirect = true
+
   // TODO: this output is supported in newer terraform module version
   //bucket_name = module.en.export_bucket
   bucket_name = "exposure-notification-export-qhqcx"
