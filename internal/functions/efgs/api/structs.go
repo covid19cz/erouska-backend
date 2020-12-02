@@ -135,10 +135,22 @@ func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
 
 //ToExposureKey convert struct from DiagnosisKeyWrapper to DiagnosisKey
 func (key *DiagnosisKey) ToExposureKey() keyserverapi.ExposureKey {
+	rt := key.TransmissionRiskLevel
+	if rt > 8 || rt < 0 {
+		// This is a sad story of how EFGS has put this into their protocol and then recommended to not use it because the value meaning can
+		// be different across different countries. Because it cannot be unused in fact, the final recommendation is to put max value possible
+		// there. That works for others but, because we put those keys into the Key server, not for us - the Key server doesn't like it so we
+		// have to adjust the value to basically anything consumable. The value itself is not used at all for anything and even though it's
+		// said to be optional in comments, the Key server requires it and fails when the value is not there or is invalid.
+		// Sad story.
+		//
+		rt = 0 // This is an override for putting 0x7fffffff there
+	}
+
 	return keyserverapi.ExposureKey{
 		Key:              base64.StdEncoding.EncodeToString(key.KeyData),
 		IntervalNumber:   int32(key.RollingStartIntervalNumber),
 		IntervalCount:    int32(key.RollingPeriod),
-		TransmissionRisk: int(key.TransmissionRiskLevel),
+		TransmissionRisk: int(rt),
 	}
 }
