@@ -8,14 +8,19 @@ variable "region" {
 }
 
 variable "bucket_name" {
- type = string
- description = "GCS bucket name for backend bucket serving"
+  type        = string
+  description = "GCS bucket name for backend bucket serving"
 }
 
 variable "name_prefix" {
- type = string
- default = "en"
- description = "name prefix for resources created"
+  type        = string
+  default     = "en"
+  description = "name prefix for resources created"
+}
+
+variable "domains" {
+  default     = []
+  description = "domains for TLS certificate"
 }
 
 terraform {

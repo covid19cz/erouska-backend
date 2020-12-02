@@ -34,12 +34,19 @@ module "cdn" {
 
   name_prefix = "exposure-keys"
 
+  domains = ["cdn.erouska.cz"]
+
   // TODO: this output is supported in newer terraform module version
   //bucket_name = module.en.export_bucket
   bucket_name = "exposure-notification-export-qhqcx"
 }
 
 provider "google" {
+  project = var.project
+  region  = var.region
+}
+
+provider "google-beta" {
   project = var.project
   region  = var.region
 }
