@@ -23,6 +23,12 @@ variable "domains" {
   description = "domains for TLS certificate"
 }
 
+variable "https_redirect" {
+  description = "Set to `true` to enable https redirect on the lb."
+  type        = bool
+  default     = false
+}
+
 terraform {
   required_providers {
     google      = "~> 3.32"
