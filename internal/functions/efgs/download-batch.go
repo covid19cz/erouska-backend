@@ -10,12 +10,15 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	redisclient "github.com/go-redis/redis/v8"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
+	"github.com/stretchr/stew/slice"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const czCode = "CZ"
 
 //DownloadAndSaveKeys Downloads batch from EFGS.
 func DownloadAndSaveKeys(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +137,7 @@ func downloadAndSaveKeysBatch(ctx context.Context, config *downloadConfig, param
 		return nil, nil
 	}
 
-	logger.Infof("Successfully downloaded %v keys from EFGS, going to upload them", len(keys))
+	logger.Infof("Successfully downloaded %v keys from EFGS, going to enqueue them", len(keys))
 
 	if err = enqueueForImport(ctx, config, keys); err != nil {
 		logger.Errorf("Could not download batch from EFGS: %v", err)
@@ -174,16 +177,36 @@ func nextBatchParams(last *efgsapi.BatchDownloadParams) efgsapi.BatchDownloadPar
 func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsapi.DiagnosisKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.enqueueForImport")
 
+	now := time.Now().Add(30 - time.Minute)
+
 	logger.Debugf("About to sort downloaded keys")
 
 	sortedKeys := make(map[string][]keyserverapi.ExposureKey)
 
+	skippedKeys := 0
+
 	for _, key := range keys {
-		mapKey := strings.ToUpper(key.Origin)
+		// filter out keys that are too old
+		if !isRecent(&key, now, config.MaxIntervalAge) {
+			skippedKeys += 1
+			continue
+		}
+
+		var origin string
+
+		// Import keys that relates to us as our own keys (#171)
+		// The comparison is case-insensitive as the code should be ISO-3166-1 alpha 2
+		if slice.ContainsString(key.VisitedCountries, czCode) {
+			origin = czCode
+		} else {
+			origin = key.Origin
+		}
+
+		mapKey := strings.ToUpper(origin)
 		sortedKeys[mapKey] = append(sortedKeys[mapKey], key.ToExposureKey())
 	}
 
-	logger.Debugf("Sorted downloaded keys into %v groups (countries)", len(sortedKeys))
+	logger.Debugf("Sorted keys into %v groups (countries), %v keys skipped", len(sortedKeys), skippedKeys)
 
 	var errors []string
 
@@ -194,9 +217,7 @@ func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsap
 			continue
 		}
 
-		// Create batches from country keys but first filter out keys that are too old.
-		recentKeys := filterRecentKeys(countryKeys, config.MaxIntervalAge)
-		batches := splitKeys(recentKeys, config.MaxKeysOnPublish, config.MaxSameStartIntervalKeys)
+		batches := splitKeys(countryKeys, config.MaxKeysOnPublish, config.MaxSameStartIntervalKeys)
 
 		logger.Infof("Enqueuing %v batches for import with HAID %v", len(batches), haid)
 

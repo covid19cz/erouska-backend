@@ -22,6 +22,7 @@ require (
 	github.com/leanovate/gopter v0.2.9
 	github.com/sethvargo/go-envconfig v0.3.2
 	github.com/sethvargo/go-signalcontext v0.1.0
+	github.com/stretchr/stew v0.0.0-20130812190256-80ef0842b48b
 	github.com/stretchr/testify v1.6.1
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1
 	go.uber.org/zap v1.16.0

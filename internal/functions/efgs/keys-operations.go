@@ -153,13 +153,9 @@ func signBatch(ctx context.Context, efgsEnv efgsutils.Environment, diagnosisKey 
 	return b64.StdEncoding.EncodeToString(detachedSignature), nil
 }
 
-func filterRecentKeys(keys efgsapi.ExpKeyBatch, maxAge int) efgsapi.ExpKeyBatch {
-	now := time.Now().Add(30 - time.Minute).Unix()
-
-	return filterKeys(keys, func(k efgsapi.ExpKey) bool {
-		age := now - int64(k.IntervalNumber*600)
-		return age <= int64(maxAge)*24*int64(time.Hour.Seconds())
-	})
+func isRecent(k *efgsapi.DiagnosisKey, now time.Time, maxAge int) bool {
+	age := now.Unix() - int64(k.RollingStartIntervalNumber*600)
+	return age <= int64(maxAge)*24*int64(time.Hour.Seconds())
 }
 
 func splitKeys(keys []efgsapi.ExpKey, batchSize int, maxOverlapping int) (batches []efgsapi.ExpKeyBatch) {
@@ -222,13 +218,4 @@ func splitKeys(keys []efgsapi.ExpKey, batchSize int, maxOverlapping int) (batche
 	}
 
 	return batches
-}
-
-func filterKeys(ss efgsapi.ExpKeyBatch, predicate func(key efgsapi.ExpKey) bool) (ret efgsapi.ExpKeyBatch) {
-	for _, s := range ss {
-		if predicate(s) {
-			ret = append(ret, s)
-		}
-	}
-	return
 }
