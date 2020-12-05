@@ -122,7 +122,7 @@ func requestNewVC(ctx context.Context, config *publishConfig) (string, error) {
 	req.Header.Add("x-api-key", config.VerificationServer.AdminKey)
 
 	if efgsutils.EfgsExtendedLogging {
-		logger.Debugf("Requesting new VC-Request: %+v", req)
+		logger.Debugf("Requesting new VC. Request: %+v", req)
 	} else {
 		logger.Debugf("Requesting new VC")
 	}
