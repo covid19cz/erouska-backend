@@ -131,6 +131,17 @@ func TestSplitKeys(t *testing.T) {
 			wantChunksCount: 101,
 		},
 		{
+			name: "efgsDownloadedKeysUnalignedSameDay",
+			args: args{
+				keys:           loadTestingKeys("unaligned-same-day"),
+				batchSize:      50,
+				maxOverlapping: 15,
+			},
+			wantChunks:      nil,
+			wantMatchResult: false,
+			wantChunksCount: 132,
+		},
+		{
 			name: "efgsDownloadedKeysUnaligned",
 			args: args{
 				keys:           loadTestingKeys("unaligned"),
@@ -139,7 +150,7 @@ func TestSplitKeys(t *testing.T) {
 			},
 			wantChunks:      nil,
 			wantMatchResult: false,
-			wantChunksCount: 132,
+			wantChunksCount: 139,
 		},
 	}
 
