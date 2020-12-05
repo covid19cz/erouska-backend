@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format
 	client.HTTPClient = httpClient
 	client.Logger = debugLogger{inner: requestLogger}
 
-	client.RetryMax = 5
+	client.RetryMax = 15
 	client.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
 		return resp.StatusCode == 429, nil
 	}
@@ -27,9 +28,8 @@ func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format
 			return 0
 		}
 
-		// This is needed because the 'Retry-After' header is rounded to whole second so we need to prolong the waiting period to prevent
-		// premature retry.
-		retryAfter = retryAfter.Add(time.Millisecond * 750)
+		// Add random 5-10s delay to reduce the contention
+		retryAfter = retryAfter.Add(time.Second * time.Duration(5+rand.Intn(5)))
 
 		var duration time.Duration = 0
 
