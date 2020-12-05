@@ -25,6 +25,8 @@ func ImportKeysToKeyServer(ctx context.Context, m pubsub.Message) error {
 
 	var payload efgsapi.BatchImportParams
 
+	// TODO consider requeueing the batch again in case of failure
+
 	if decodeErr := pubsub.DecodeJSONEvent(m, &payload); decodeErr != nil {
 		err := fmt.Errorf("Error while parsing event payload: %v", decodeErr)
 		logger.Error(err)
