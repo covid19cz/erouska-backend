@@ -15,18 +15,6 @@ import (
 	"time"
 )
 
-//MetricsData Data of metrics.
-type MetricsData struct {
-	Modified               int64  `json:"modified"`
-	Date                   string `json:"date"`
-	ActivationsYesterday   int32  `json:"activations_yesterday"`
-	ActivationsTotal       int32  `json:"activations_total"`
-	KeyPublishersYesterday int32  `json:"key_publishers_yesterday"`
-	KeyPublishersTotal     int32  `json:"key_publishers_total"`
-	NotificationsYesterday int32  `json:"notifications_yesterday"`
-	NotificationsTotal     int32  `json:"notifications_total"`
-}
-
 type counts struct {
 	yesterday int32
 	total     int32
@@ -71,7 +59,7 @@ func PrepareNewVersion(w http.ResponseWriter, r *http.Request) {
 
 	var today = time.Now().Format("20060102")
 
-	var data = MetricsData{
+	var data = structs.MetricsData{
 		Modified:               now.Unix(),
 		Date:                   today,
 		ActivationsYesterday:   activations.yesterday,
