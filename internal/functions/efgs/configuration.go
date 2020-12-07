@@ -10,6 +10,7 @@ import (
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/pubsub"
+	"github.com/covid19cz/erouska-backend/internal/realtimedb"
 	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
@@ -21,13 +22,14 @@ import (
 )
 
 type uploadConfig struct {
-	URL            *urlutils.URL
-	Env            efgsutils.Environment
-	NBTLSPair      *efgsutils.X509KeyPair
-	Client         *http.Client
-	Database       *efgsdatabase.Connection
-	BatchSizeLimit int
-	BatchTag       string
+	URL              *urlutils.URL
+	Env              efgsutils.Environment
+	NBTLSPair        *efgsutils.X509KeyPair
+	Client           *http.Client
+	Database         *efgsdatabase.Connection
+	RealtimeDBClient *realtimedb.Client
+	BatchSizeLimit   int
+	BatchTag         string
 }
 
 type publishConfig struct {
@@ -46,6 +48,7 @@ type downloadConfig struct {
 	PubSubClient             pubsub.EventPublisher
 	RedisClient              redis.Client
 	MutexManager             redismutex.MutexManager
+	RealtimeDBClient         *realtimedb.Client
 	MaxKeysOnPublish         int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
 	MaxIntervalAge           int `env:"MAX_INTERVAL_AGE_ON_PUBLISH,default=15"`
 	MaxSameStartIntervalKeys int `env:"MAX_SAME_START_INTERVAL_KEYS,default=15"`
@@ -61,9 +64,10 @@ func loadUploadConfig(ctx context.Context) (*uploadConfig, error) {
 
 	var err error
 	config := uploadConfig{
-		URL:      url,
-		Env:      efgsEnv,
-		Database: &efgsdatabase.Database,
+		URL:              url,
+		Env:              efgsEnv,
+		Database:         &efgsdatabase.Database,
+		RealtimeDBClient: &realtimedb.Client{},
 	}
 
 	config.Env = efgsEnv
@@ -170,6 +174,7 @@ func loadDownloadConfig(ctx context.Context) (*downloadConfig, error) {
 	config.PubSubClient = pubsub.Client{}
 	config.MutexManager = redismutex.ClientImpl{}
 	config.RedisClient = redis.ClientImpl{}
+	config.RealtimeDBClient = &realtimedb.Client{}
 
 	return &config, nil
 }

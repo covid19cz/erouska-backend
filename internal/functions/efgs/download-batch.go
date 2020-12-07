@@ -3,11 +3,16 @@ package efgs
 import (
 	"context"
 	"encoding/json"
+	"firebase.google.com/go/db"
 	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/constants"
+	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsconstants "github.com/covid19cz/erouska-backend/internal/functions/efgs/constants"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/realtimedb"
+	"github.com/covid19cz/erouska-backend/internal/utils"
 	redisclient "github.com/go-redis/redis/v8"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"github.com/stretchr/stew/slice"
@@ -103,8 +108,10 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig) error {
 
 	// Enqueue downloaded keys:
 
-	if len(keys) > 0 {
-		logger.Infof("Successfully downloaded %v keys from EFGS, going to enqueue them", len(keys))
+	keysCount := len(keys)
+
+	if keysCount > 0 {
+		logger.Infof("Successfully downloaded %v keys from EFGS, going to enqueue them", keysCount)
 
 		if err = enqueueForImport(ctx, config, keys); err != nil {
 			logger.Debugf("Could not enqueue batch from EFGS for import: %v", err)
@@ -112,6 +119,10 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig) error {
 		}
 
 		logger.Infof("Successfully enqueued downloaded keys for import to our Key server")
+
+		if err = updateDownloadedCounters(ctx, config.RealtimeDBClient, keysCount); err != nil {
+			logger.Warnf("Could not update EFGS download counters: %v", err)
+		}
 	}
 
 	// Save params for next run:
@@ -390,4 +401,44 @@ func loadBatchParams(config *downloadConfig) (*efgsapi.BatchDownloadParams, erro
 	}
 
 	return &savedBatchParams, nil
+}
+
+func updateDownloadedCounters(ctx context.Context, client *realtimedb.Client, keysCount int) error {
+	logger := logging.FromContext(ctx).Named("efgs.download-batch.updateDownloadedCounters")
+
+	var date = utils.GetTimeNow().Format("20060102")
+
+	// update daily counter
+	if err := updateDownloadedCounter(ctx, client, constants.DbEfgsCountersPrefix+date, keysCount); err != nil {
+		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
+		return err
+	}
+
+	// update total counter
+	if err := updateDownloadedCounter(ctx, client, constants.DbEfgsCountersPrefix+"total", keysCount); err != nil {
+		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func updateDownloadedCounter(ctx context.Context, client *realtimedb.Client, dbKey string, keysCount int) error {
+	logger := logging.FromContext(ctx).Named("efgs.download-batch.updateDownloadedCounter")
+
+	return client.RunTransaction(ctx, dbKey, func(tn db.TransactionNode) (interface{}, error) {
+		var state structs.EfgsCounter
+
+		if err := tn.Unmarshal(&state); err != nil {
+			return nil, err
+		}
+
+		logger.Debugf("Found counter state, dbKey %v: %+v", dbKey, state)
+
+		state.KeysDownloaded += keysCount
+
+		logger.Debugf("Saving updated counter state, dbKey %v: %+v", dbKey, state)
+
+		return state, nil
+	})
 }
