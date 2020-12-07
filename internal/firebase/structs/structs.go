@@ -41,6 +41,12 @@ type PublisherCounter struct {
 	KeysCount       int `json:"keysCount"`
 }
 
+//EfgsCounter DB entity for EFGS counters.
+type EfgsCounter struct {
+	KeysUploaded   int `json:"keysUploaded"`
+	KeysDownloaded int `json:"keysDownloaded"`
+}
+
 //VerificationCodeMetadata DB entity for verification code metadata.
 type VerificationCodeMetadata struct {
 	VsMetadata map[string]interface{} `json:"vsMetadata"`

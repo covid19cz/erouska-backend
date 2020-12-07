@@ -165,7 +165,7 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=efgs-upload-keys@${PROJECT_ID}.iam.gserviceaccount.com
-      - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_UPLOAD_BATCH_SIZE=30,EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},EFGS_UPLOAD_BATCH_SIZE=${_EFGS_UPLOAD_BATCH_SIZE},EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:

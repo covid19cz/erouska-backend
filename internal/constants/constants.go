@@ -29,3 +29,6 @@ const DbUserCountersPrefix = "userCounters/"
 
 //DbPublisherCountersPrefix Prefix of publisher counters data in Realtime DB.
 const DbPublisherCountersPrefix = "publisherCounters/"
+
+//DbEfgsCountersPrefix Prefix of EFGS counters data in Realtime DB.
+const DbEfgsCountersPrefix = "efgsCounters/"

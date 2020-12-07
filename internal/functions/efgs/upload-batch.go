@@ -6,10 +6,15 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"firebase.google.com/go/db"
 	"fmt"
+	"github.com/covid19cz/erouska-backend/internal/constants"
+	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/realtimedb"
+	"github.com/covid19cz/erouska-backend/internal/utils"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"math"
@@ -66,8 +71,9 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 
 		diagnosisKeyBatch := makeBatch(diagnosisKeys)
 		uploadConfig.BatchTag = calculateBatchTag(now, &diagnosisKeyBatch)
+		batchKeysCount := len(batch)
 
-		logger.Debugf("Uploading batch (%d keys) with tag %s", len(batch), uploadConfig.BatchTag)
+		logger.Debugf("Uploading batch (%d keys) with tag %s", batchKeysCount, uploadConfig.BatchTag)
 
 		resp, err := uploadBatch(ctx, &diagnosisKeyBatch, uploadConfig)
 		if err != nil {
@@ -81,6 +87,10 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 				continue
 			}
 			logger.Debugf("Batch %s successfully uploaded", uploadConfig.BatchTag)
+
+			if err = updateUploadedCounters(ctx, uploadConfig.RealtimeDBClient, batchKeysCount); err != nil {
+				logger.Warnf("Could not update EFGS upload counters: %v", err)
+			}
 		} else { // nothing was saved to EFGS
 			logger.Debugf("Batch was partially invalid and therefore rejected")
 
@@ -237,4 +247,44 @@ func calculateBatchTag(date time.Time, batch *efgsapi.DiagnosisKeyBatch) string 
 	hash := sha1.New()
 	_, _ = hash.Write(batchToBytes(batch))
 	return date.Format("20060102") + "-" + hex.EncodeToString(hash.Sum(nil))[:7]
+}
+
+func updateUploadedCounters(ctx context.Context, client *realtimedb.Client, keysCount int) error {
+	logger := logging.FromContext(ctx).Named("efgs.upload-batch.updateUploadedCounters")
+
+	var date = utils.GetTimeNow().Format("20060102")
+
+	// update daily counter
+	if err := updateUploadedCounter(ctx, client, constants.DbEfgsCountersPrefix+date, keysCount); err != nil {
+		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
+		return err
+	}
+
+	// update total counter
+	if err := updateUploadedCounter(ctx, client, constants.DbEfgsCountersPrefix+"total", keysCount); err != nil {
+		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func updateUploadedCounter(ctx context.Context, client *realtimedb.Client, dbKey string, keysCount int) error {
+	logger := logging.FromContext(ctx).Named("efgs.upload-batch.updateUploadedCounter")
+
+	return client.RunTransaction(ctx, dbKey, func(tn db.TransactionNode) (interface{}, error) {
+		var state structs.EfgsCounter
+
+		if err := tn.Unmarshal(&state); err != nil {
+			return nil, err
+		}
+
+		logger.Debugf("Found counter state, dbKey %v: %+v", dbKey, state)
+
+		state.KeysUploaded += keysCount
+
+		logger.Debugf("Saving updated counter state, dbKey %v: %+v", dbKey, state)
+
+		return state, nil
+	})
 }
