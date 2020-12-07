@@ -88,7 +88,6 @@ module "cdn" {
   bucket_name = "exposure-notification-export-ejjud"
 }
 
-
 output "en" {
   value = module.en
 }
