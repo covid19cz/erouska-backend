@@ -70,4 +70,10 @@ type GetCovidDataResponse struct {
 	ConfirmedCasesIncreaseDate    string `json:"confirmedCasesIncreaseDate" validate:"required"`
 }
 
+//DownloadMetricsRequest Request for DownloadMetrics function
+type DownloadMetricsRequest struct {
+	Date string `json:"date"`
+}
+
+//DownloadMetricsResponse Response for DownloadMetrics function
 type DownloadMetricsResponse = structs.MetricsData
