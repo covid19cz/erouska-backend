@@ -1,5 +1,9 @@
 package v1
 
+import (
+	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
+)
+
 /*
 This files contains request/response structs for all endpoints (except PublishKeys). The structs have to be changed in
 backward-compatible way and when it's not possible, copied to `v2` and changed there.
@@ -65,3 +69,5 @@ type GetCovidDataResponse struct {
 	TestsIncreaseDate             string `json:"testsIncreaseDate" validate:"required"`
 	ConfirmedCasesIncreaseDate    string `json:"confirmedCasesIncreaseDate" validate:"required"`
 }
+
+type DownloadMetricsResponse = structs.MetricsData
