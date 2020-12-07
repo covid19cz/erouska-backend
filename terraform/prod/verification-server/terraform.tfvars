@@ -10,12 +10,29 @@ database_backup_location   = "eu"
 redis_cache_size           = 1
 service_environment = {
   apiserver = {
-    CERTIFICATE_ISSUER   = "cz.covid19cz.erouska"
-    CERTIFICATE_AUDIENCE = "covid19cz"
+    CERTIFICATE_ISSUER     = "cz.covid19cz.erouska"
+    CERTIFICATE_AUDIENCE   = "covid19cz"
+    OBSERVABILITY_EXPORTER = "NOOP"
   }
   server = {
     FIREBASE_PRIVACY_POLICY_URL   = "TODO"
     FIREBASE_TERMS_OF_SERVICE_URL = "TODO"
+    OBSERVABILITY_EXPORTER        = "NOOP"
+  }
+  modeler = {
+    OBSERVABILITY_EXPORTER = "NOOP"
+  }
+  e2e-runner = {
+    OBSERVABILITY_EXPORTER = "NOOP"
+  }
+  enx-redirect = {
+    OBSERVABILITY_EXPORTER = "NOOP"
+  }
+  cleanup = {
+    OBSERVABILITY_EXPORTER = "NOOP"
+  }
+  adminapi = {
+    OBSERVABILITY_EXPORTER = "NOOP"
   }
 }
 notification-email = "marek.bartik@pipetail.io"

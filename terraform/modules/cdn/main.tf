@@ -34,8 +34,8 @@ resource "google_compute_url_map" "main" {
 }
 
 resource "google_compute_url_map" "https_redirect" {
-  count   = var.https_redirect ? 1 : 0
-  name    = "${var.name_prefix}-https-redirect"
+  count = var.https_redirect ? 1 : 0
+  name  = "${var.name_prefix}-https-redirect"
   default_url_redirect {
     https_redirect         = true
     redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"

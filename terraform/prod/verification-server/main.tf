@@ -6,13 +6,14 @@ terraform {
 }
 
 module "vf" {
-  source = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform?ref=v0.9.0"
+  source = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform?ref=v0.17.0"
 
   project = var.project
   region  = var.region
 
   database_tier         = var.database_tier
   database_disk_size_gb = var.database_disk_size_gb
+  database_version      = "POSTGRES_12"
 
   cloudscheduler_location = var.cloudscheduler_location
   appengine_location      = var.appengine_location
@@ -33,12 +34,19 @@ module "vf" {
 }
 
 module "alerting" {
-  source             = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform/alerting?ref=v0.9.0"
-  project            = var.project
-  notification-email = var.notification-email
-  server-host        = replace(module.vf.server_url, "https://", "")
-  apiserver-host     = replace(module.vf.apiserver_url, "https://", "")
-  adminapi-host      = replace(module.vf.adminapi_url, "https://", "")
+  source                      = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform/alerting?ref=v0.17.0"
+  verification-server-project = var.project
+  monitoring-host-project     = var.project
+  server_hosts                = module.vf.server_urls
+  apiserver_hosts             = module.vf.apiserver_urls
+  adminapi_hosts              = module.vf.adminapi_urls
+  alert-notification-channels = {
+    email = {
+      labels = {
+        email_address = var.notification-email
+      }
+    }
+  }
 }
 
 provider "google" {

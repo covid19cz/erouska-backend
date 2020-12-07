@@ -6,7 +6,7 @@ terraform {
 }
 
 module "en" {
-  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=v0.9.2"
+  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=d51abd8"
 
   project = var.project
   region  = var.region
@@ -18,12 +18,44 @@ module "en" {
   kms_location             = var.kms_location
   network_location         = var.network_location
   db_location              = var.db_location
+  db_user                  = var.db_user
   db_name                  = var.db_name
   cloudsql_tier            = var.cloudsql_tier
   cloudsql_disk_size_gb    = var.cloudsql_disk_size_gb
   generate_cron_schedule   = var.generate_cron_schedule
   cloudsql_max_connections = var.cloudsql_max_connections
   cloudsql_backup_location = var.cloudsql_backup_location
+  db_version               = var.db_version
+
+  service_environment = {
+    jwks = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    generate = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    federationout = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    federationin = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    exposure = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    export = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    cleanup_exposure = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    cleanup_export = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+    key_rotation = {
+      OBSERVABILITY_EXPORTER = "NOOP"
+    }
+  }
 }
 
 module "cdn" {
