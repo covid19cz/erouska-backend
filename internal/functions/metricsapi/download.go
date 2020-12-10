@@ -25,8 +25,8 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 
 	var req v1.DownloadMetricsRequest
 
-	if !httputils.DecodeJSONOrReportError(w, r, &req) {
-		return
+	if err := httputils.DecodeJSONBody(w, r, &req); err != nil {
+		logger.Warnf("Invalid request, ignoring: %v", err)
 	}
 
 	if req.Date != "" {
