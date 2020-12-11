@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -62,16 +63,16 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 
 	var errors []string
 
-	for _, batch := range batches {
+	for _, batchDbKeys := range batches {
 		var diagnosisKeys []*efgsapi.DiagnosisKey
-		for _, k := range batch {
+		for _, k := range batchDbKeys {
 			diagnosisKeys = append(diagnosisKeys, k.ToData())
 		}
 		sortDiagnosisKey(diagnosisKeys)
 
 		diagnosisKeyBatch := makeBatch(diagnosisKeys)
 		uploadConfig.BatchTag = calculateBatchTag(now, &diagnosisKeyBatch)
-		batchKeysCount := len(batch)
+		batchKeysCount := len(batchDbKeys)
 
 		logger.Debugf("Uploading batch (%d keys) with tag %s", batchKeysCount, uploadConfig.BatchTag)
 
@@ -82,7 +83,7 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 		}
 
 		if resp.StatusCode == 201 {
-			if err := uploadConfig.Database.RemoveDiagnosisKeys(batch); err != nil {
+			if err := uploadConfig.Database.RemoveDiagnosisKeys(batchDbKeys); err != nil {
 				errors = append(errors, fmt.Sprintf("Removing uploaded keys from database failed: %s", err))
 				continue
 			}
@@ -92,9 +93,11 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 				logger.Warnf("Could not update EFGS upload counters: %v", err)
 			}
 		} else { // nothing was saved to EFGS
-			logger.Debugf("Batch was partially invalid and therefore rejected")
+			msg := fmt.Sprintf("Batch %s was partially invalid and therefore rejected", uploadConfig.BatchTag)
+			logger.Debugf(msg)
+			errors = append(errors, msg)
 
-			if err := handleErrorUploadResponse(ctx, resp, uploadConfig, batch); err != nil {
+			if err := handleErrorUploadResponse(ctx, resp, uploadConfig, batchDbKeys, diagnosisKeys); err != nil {
 				errors = append(errors, fmt.Sprintf("Handling upload response ended with error: %s", err))
 				continue
 			}
@@ -182,7 +185,7 @@ func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *
 			return nil, err
 		}
 
-		logger.Debug("Some keys in batch were invalid or duplicated: %+v", parsedResponse)
+		logger.Debugf("Some keys in batch were invalid or duplicated: %+v", parsedResponse)
 		return &parsedResponse, nil
 	default:
 		logger.Debug("Batch upload failed. No key was uploaded")
@@ -190,37 +193,72 @@ func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *
 	}
 }
 
-func handleErrorUploadResponse(ctx context.Context, resp *efgsapi.UploadBatchResponse, uploadConfig *uploadConfig, keys []*efgsapi.DiagnosisKeyWrapper) error {
+func handleErrorUploadResponse(ctx context.Context, resp *efgsapi.UploadBatchResponse, uploadConfig *uploadConfig, batchDbKeys []*efgsapi.DiagnosisKeyWrapper, diagnosesKeys []*efgsapi.DiagnosisKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.handleErrorUploadResponse")
 
+	// The magic in this method is needed because EFGS uses weird sorting and we need to map indexes reported by EFGS (indexes in uplod batch)
+	// to index resp. key in the original batch. I'd love to implement this some less mind-blowing way but in a language where one has to
+	// implement a function for getting all keys/values of map, this way is just a smaller pain.
+
+	// This is needed for binary-search below
+	sort.Slice(batchDbKeys, func(i, j int) bool {
+		return bytes.Compare(batchDbKeys[i].KeyData, batchDbKeys[j].KeyData) > 0
+	})
+
+	// Find DB entity relevant to DiagnosisKey with given index
+	findRelevantKey := func(index int) *efgsapi.DiagnosisKeyWrapper {
+		lookFor := diagnosesKeys[index].KeyData
+
+		// This does binary search.
+		pos := sort.Search(len(batchDbKeys), func(i int) bool {
+			return bytes.Compare(batchDbKeys[i].KeyData, lookFor) <= 0
+		})
+
+		if pos < len(batchDbKeys) && pos >= 0 {
+			return batchDbKeys[pos]
+		}
+
+		return nil
+	}
+
+	// Handle keys when the whole batch was rejected. Increase their retries counter, will be removed if the value is too high
 	if resp.StatusCode == 400 {
-		for _, key := range keys {
+		for _, key := range batchDbKeys {
 			key.Retries++
 		}
 
 		logger.Debugf("Updating retries for failed keys")
-		return uploadConfig.Database.UpdateKeys(keys)
+		return uploadConfig.Database.UpdateKeys(batchDbKeys)
 	}
 
+	// Handle errored keys - increase their retries counter, will be removed if the value is too high
 	for _, keyIndex := range resp.Error {
-		key := keys[keyIndex]
-		key.Retries++
+		if key := findRelevantKey(keyIndex); key != nil {
+			key.Retries++
+		}
 	}
 
+	// Handle duplicate (already uploaded) keys - should be deleted from our DB
 	for _, keyIndex := range resp.Duplicate {
-		keys[keyIndex].Retries = math.MaxInt64
+		if key := findRelevantKey(keyIndex); key != nil {
+			key.Retries = math.MaxInt64
+		}
 	}
 
+	// Handle potentially successful keys - must be retried!
 	for _, keyIndex := range resp.Success {
-		keys[keyIndex].Retries = math.MaxInt64
+		if key := findRelevantKey(keyIndex); key != nil {
+			key.Retries = 1
+		}
 	}
 
-	if err := uploadConfig.Database.UpdateKeys(keys); err != nil {
+	// Update the keys in DB
+	if err := uploadConfig.Database.UpdateKeys(batchDbKeys); err != nil {
 		return err
 	}
 
 	logger.Debugf("Removing invalid keys from DB")
-	return uploadConfig.Database.RemoveInvalidKeys(keys)
+	return uploadConfig.Database.RemoveInvalidKeys()
 }
 
 func splitBatch(buf []*efgsapi.DiagnosisKeyWrapper, lim int) [][]*efgsapi.DiagnosisKeyWrapper {

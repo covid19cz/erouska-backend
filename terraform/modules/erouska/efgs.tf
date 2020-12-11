@@ -109,7 +109,7 @@ resource "google_project_iam_member" "efgsuploadkeys-invoker" {
 resource "google_cloud_scheduler_job" "efgsuploadkeys-worker" {
   name             = "efgsuploadkeys-worker"
   region           = var.cloudscheduler_location
-  schedule         = "0 */2 * * *"
+  schedule         = "*/15 * * * *"
   time_zone        = "Europe/Prague"
   attempt_deadline = "600s"
 
