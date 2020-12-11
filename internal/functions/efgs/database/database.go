@@ -138,11 +138,11 @@ func (db Connection) UpdateKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
 }
 
 //RemoveInvalidKeys Remove N times refused keys from the DB
-func (db Connection) RemoveInvalidKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
+func (db Connection) RemoveInvalidKeys() error {
 	connection := db.inner().Conn()
 	defer connection.Close()
 
-	_, err := connection.Model(&keys).Where("retries >= 2").Delete()
+	_, err := connection.Model(new(efgsapi.DiagnosisKeyWrapper)).Where("retries >= 2").Delete()
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (db Connection) RemoveOldKeys(dateFrom string) error {
 	connection := db.inner().Conn()
 	defer connection.Close()
 
-	_, err := connection.Model(&efgsapi.DiagnosisKeyWrapper{}).Where("created_at < ?", dateFrom).Delete()
+	_, err := connection.Model(new(efgsapi.DiagnosisKeyWrapper)).Where("created_at < ?", dateFrom).Delete()
 	if err != nil {
 		return err
 	}

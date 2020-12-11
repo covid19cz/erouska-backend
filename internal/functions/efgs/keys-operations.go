@@ -133,6 +133,10 @@ func signBatch(ctx context.Context, efgsEnv efgsutils.Environment, diagnosisKey 
 
 	var rawDiagnosisKey []byte
 	for _, k := range diagnosisKey.Keys {
+		if efgsutils.EfgsExtendedLogging {
+			logger.Debugf("Uploading key: %v", b64.StdEncoding.EncodeToString(k.KeyData))
+		}
+
 		rawDiagnosisKey = append(rawDiagnosisKey, diagnosisKeyToBytes(k)[:]...)
 	}
 
