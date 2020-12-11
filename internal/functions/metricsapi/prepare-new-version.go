@@ -10,24 +10,25 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/realtimedb"
 	"github.com/covid19cz/erouska-backend/internal/store"
 	httputils "github.com/covid19cz/erouska-backend/internal/utils/http"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"net/http"
 	"os"
 	"time"
 )
 
-type counts struct {
-	yesterday int32
-	total     int32
+type config struct {
+	projectID        string
+	now              time.Time
+	realtimedbClient realtimedb.RealtimeDB
+	firestoreClient  store.Storer
+	monitoringClient monitoring.Reader
 }
-
-const publishersOffset = -2708 // number of reported publishers before the metric was changed
 
 //PrepareNewVersion Prepares new version of metrics JSON document.
 func PrepareNewVersion(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
-	logger := logging.FromContext(ctx)
-
-	var now = time.Now()
+	logger := logging.FromContext(ctx).Named("PrepareNewVersion")
 
 	projectID, ok := os.LookupEnv("METRICS_PROJECT_ID")
 	if !ok {
@@ -36,207 +37,146 @@ func PrepareNewVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	notifications, err := getNotificationCounters(ctx, now)
-	if err != nil {
+	config := config{
+		projectID:        projectID,
+		now:              time.Now(),
+		realtimedbClient: realtimedb.Client{},
+		firestoreClient:  store.Client{},
+		monitoringClient: monitoring.Client{},
+	}
+
+	if err := prepareNewVersion(ctx, &config); err != nil {
 		logger.Errorf("Error while fetching data: %v", err)
 		httputils.SendErrorResponse(w, r, err)
 		return
 	}
-
-	activations, err := getActivationCounters(ctx, now)
-	if err != nil {
-		logger.Errorf("Error while fetching data: %v", err)
-		httputils.SendErrorResponse(w, r, err)
-		return
-	}
-
-	publishers, err := getPublishersCount(ctx, projectID)
-	if err != nil {
-		logger.Errorf("Error while fetching data: %v", err)
-		httputils.SendErrorResponse(w, r, err)
-		return
-	}
-
-	var today = time.Now().Format("20060102")
-
-	var data = structs.MetricsData{
-		Modified:               now.Unix(),
-		Date:                   today,
-		ActivationsYesterday:   activations.yesterday,
-		ActivationsTotal:       activations.total,
-		KeyPublishersYesterday: publishers.yesterday,
-		KeyPublishersTotal:     publishers.total,
-		NotificationsYesterday: notifications.yesterday,
-		NotificationsTotal:     notifications.total,
-	}
-
-	firestoreClient := store.Client{}
-
-	_, err = firestoreClient.Doc(constants.CollectionMetrics, today).Set(ctx, &data)
-	if err != nil {
-		logger.Errorf("Error while saving data: %v", err)
-		httputils.SendErrorResponse(w, r, err)
-		return
-	}
-
-	logger.Infof("Successfully written metrics data to firestore: %+v", data)
 
 	httputils.SendResponse(w, r, struct{ status string }{status: "OK"})
 }
 
-func getNotificationCounters(ctx context.Context, now time.Time) (*counts, error) {
-	logger := logging.FromContext(ctx)
+func prepareNewVersion(ctx context.Context, config *config) error {
+	logger := logging.FromContext(ctx).Named("prepareNewVersion")
 
-	var date = now.Add(time.Hour * -24).Format("20060102")
-
-	// yesterday
-
-	yesterdayData, err := getNotificationCounter(ctx, date)
+	yesterday := config.now.UTC().Add(-24 * time.Hour)
+	doc, err := config.firestoreClient.Doc(constants.CollectionMetrics, yesterday.Format("20060102")).Get(ctx)
 	if err != nil {
-		return nil, err
+		logger.Debugf("Could not fetch yesterdays data for yestPublishers: %v", err)
+		return err
+	}
+	var yestData structs.MetricsData
+	if err = doc.DataTo(&yestData); err != nil {
+		logger.Debugf("Could not fetch yesterdays data for yestPublishers: %v", err)
+		return err
 	}
 
-	logger.Infof("Notifications count for yesterday: %v", yesterdayData.NotificationsCount)
+	logger.Debugf("Loaded yesterdays data: %+v", yestData)
 
-	// total
-
-	totalData, err := getNotificationCounter(ctx, "total")
+	yestNotifications, err := getNotificationsCount(ctx, config, yesterday.Format("20060102"))
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("Error while fetching data: %v", err)
 	}
 
-	logger.Infof("Notifications total count: %v", totalData.NotificationsCount)
+	yestActivations, err := getActivationsCount(ctx, config, yesterday.Format("20060102"))
+	if err != nil {
+		return fmt.Errorf("Error while fetching data: %v", err)
+	}
 
-	return &counts{
-		yesterday: int32(yesterdayData.NotificationsCount),
-		total:     int32(totalData.NotificationsCount),
-	}, nil
+	yestPublishers, err := getPublishersCount(ctx, config)
+	if err != nil {
+		return fmt.Errorf("Error while fetching data: %v", err)
+	}
+
+	var today = config.now.Format("20060102")
+
+	data := structs.MetricsData{
+		Modified:               config.now.Unix(),
+		Date:                   today,
+		ActivationsYesterday:   yestActivations,
+		ActivationsTotal:       yestData.ActivationsTotal + yestActivations,
+		KeyPublishersYesterday: yestPublishers,
+		KeyPublishersTotal:     yestData.KeyPublishersTotal + yestPublishers,
+		NotificationsYesterday: yestNotifications,
+		NotificationsTotal:     yestData.NotificationsTotal + yestNotifications,
+	}
+
+	logger.Debugf("Collected data: %+v", data)
+
+	_, err = config.firestoreClient.Doc(constants.CollectionMetrics, today).Set(ctx, &data)
+	if err != nil {
+		return fmt.Errorf("Error while saving data: %v", err)
+	}
+
+	logger.Infof("Successfully written metrics data to firestoreClient: %+v", data)
+	return nil
 }
 
-func getNotificationCounter(ctx context.Context, key string) (*structs.NotificationCounter, error) {
-	logger := logging.FromContext(ctx)
-	var storeClient = store.Client{}
+func getNotificationsCount(ctx context.Context, config *config, key string) (int32, error) {
+	logger := logging.FromContext(ctx).Named("getNotificationsCount")
 
 	logger.Debugf("Getting notification counter with key %v", key)
 
-	doc := storeClient.Doc(constants.CollectionNotificationCounters, key)
+	doc := config.firestoreClient.Doc(constants.CollectionNotificationCounters, key)
 
-	// TODO handle not found
+	var data structs.NotificationCounter
 
 	rec, err := doc.Get(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
+		if status.Code(err) != codes.NotFound {
+			return 0, fmt.Errorf("Error while querying Firestore: %v", err)
+		}
+
+		logger.Warnf("Notifications counter for '%v' was not found, using default value", key)
+
+		data = structs.NotificationCounter{
+			NotificationsCount: 0,
+		}
+	} else {
+		err = rec.DataTo(&data)
+		if err != nil {
+			return 0, fmt.Errorf("Error while querying Firestore: %v", err)
+		}
 	}
 
-	var data structs.NotificationCounter
-	err = rec.DataTo(&data)
-	if err != nil {
-		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
-	}
-	return &data, nil
+	return int32(data.NotificationsCount), nil
 }
 
-func getActivationCounters(ctx context.Context, now time.Time) (*counts, error) {
-	logger := logging.FromContext(ctx)
-
-	var date = now.Add(time.Hour * -24).Format("20060102")
-
-	// yesterday
-
-	yesterdayData, err := getActivationCounter(ctx, date)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Infof("Activations count for yesterday: %v", yesterdayData.UsersCount)
-
-	// total
-
-	totalData, err := getActivationCounter(ctx, "total")
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Infof("Activations total count: %v", totalData.UsersCount)
-
-	return &counts{
-		yesterday: int32(yesterdayData.UsersCount),
-		total:     int32(totalData.UsersCount),
-	}, nil
-}
-
-func getActivationCounter(ctx context.Context, key string) (*structs.UserCounter, error) {
-	logger := logging.FromContext(ctx)
-	client := realtimedb.Client{}
+func getActivationsCount(ctx context.Context, config *config, key string) (int32, error) {
+	logger := logging.FromContext(ctx).Named("getActivationsCount")
 
 	logger.Debugf("Getting activation counter with key %v", key)
 
 	var data structs.UserCounter
 
-	// TODO handle not found
-
-	if err := client.NewRef(constants.DbUserCountersPrefix+key).Get(ctx, &data); err != nil {
+	if err := config.realtimedbClient.NewRef(constants.DbUserCountersPrefix+key).Get(ctx, &data); err != nil {
 		logger.Debugf("Error while querying DB: %v", err)
-		return nil, err
+		return 0, err
 	}
 
-	return &data, nil
+	return int32(data.UsersCount), nil
 }
 
-func getPublishersCount(ctx context.Context, projectID string) (*counts, error) {
+func getPublishersCount(ctx context.Context, config *config) (int32, error) {
 	logger := logging.FromContext(ctx)
 
-	startOfTomorrow := time.Now().UTC().Add(time.Hour * -24).Truncate(time.Hour * 24)
-	startOfErouska, err := time.Parse("02.01.2006", "01.09.2020")
-	if err != nil {
-		panic(err)
-	}
+	startOfTomorrow := config.now.UTC().Add(time.Hour * -24).Truncate(time.Hour * 24)
 
-	values, err := getPublishersValues(ctx, projectID, startOfTomorrow, 84600 /* 1 day */)
+	values, err := getPublishersValues(ctx, config, startOfTomorrow, 84600 /* 1 day */)
 	if err != nil {
 		logger.Debugf("Could not fetch data for publishers of last day: %v", err)
-		return nil, err
+		return 0, err
 	}
 
-	yesterdayCount := values[0] // get the newest from daily buckets
-
-	logger.Infof("Publishers count for yesterday %v", yesterdayCount)
-
-	values, err = getPublishersValues(ctx, projectID, startOfErouska, 2592000 /* 1 month */)
-	if err != nil {
-		logger.Debugf("Could not fetch data for publishers of all time: %v", err)
-		return nil, err
-	}
-
-	totalCount := sum(values) // if there's multiple values, sum them all up - this is all time startOfErouska
-	totalCount -= publishersOffset
-
-	logger.Infof("Publishers total count: %v", totalCount)
-
-	return &counts{
-		yesterday: yesterdayCount,
-		total:     totalCount,
-	}, nil
+	return values[0], nil // get the newest from daily buckets
 }
 
-func getPublishersValues(ctx context.Context, projectID string, from time.Time, sumWindow int64) ([]int32, error) {
-	monitoringClient := monitoring.Client{}
-
-	startOfToday := time.Now().UTC().Truncate(time.Hour * 24)
+func getPublishersValues(ctx context.Context, config *config, from time.Time, sumWindow int64) ([]int32, error) {
+	startOfToday := config.now.UTC().Truncate(time.Hour * 24)
 
 	// this just adds the configuration... one would use function currying of Go supports such thing
-	return monitoringClient.ReadSummarized(ctx,
-		projectID,
+	return config.monitoringClient.ReadSummarized(ctx,
+		config.projectID,
 		`resource.type="cloud_run_revision" metric.type="logging.googleapis.com/user/publish-exposures-inserted-flattened"`,
 		from,
 		startOfToday,
 		sumWindow)
-}
-
-func sum(array []int32) int32 {
-	result := int32(0)
-	for _, v := range array {
-		result += v
-	}
-	return result
 }
