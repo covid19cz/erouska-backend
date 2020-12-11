@@ -29,14 +29,14 @@ func init() {
 
 //Reader Interface for monitoring client.
 type Reader interface {
-	ReadSummarized(ctx context.Context, name string, intervalStart time.Time, sumWindow int64) ([]int32, error)
+	ReadSummarized(ctx context.Context, projectID string, filter string, from time.Time, until time.Time, sumWindow int64) ([]int32, error)
 }
 
 //Client Real Monitoring client.
 type Client struct{}
 
 //ReadSummarized Reads summarized metrics. Specify point in history and window of aggregation.
-func (c *Client) ReadSummarized(ctx context.Context, projectID string, filter string, from time.Time, until time.Time, sumWindow int64) ([]int32, error) {
+func (c Client) ReadSummarized(ctx context.Context, projectID string, filter string, from time.Time, until time.Time, sumWindow int64) ([]int32, error) {
 	logger := logging.FromContext(ctx)
 
 	req := &googlemonitoringpb.ListTimeSeriesRequest{
@@ -94,6 +94,6 @@ func (c *Client) ReadSummarized(ctx context.Context, projectID string, filter st
 type MockClient struct{}
 
 //ReadSummarized Does nothing.
-func (m *MockClient) ReadSummarized(ctx context.Context, name string, intervalStart time.Time, sumWindow int64) ([]int32, error) {
+func (m MockClient) ReadSummarized(ctx context.Context, projectID string, filter string, from time.Time, until time.Time, sumWindow int64) ([]int32, error) {
 	return []int32{42}, nil
 }
