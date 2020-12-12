@@ -13,6 +13,7 @@ import (
 //SecretsManagerClient -_-
 var SecretsManagerClient *secretmanager.Client
 var projectID string
+var secretsPayloadLogging = false
 
 func init() {
 	ctx := context.Background()
@@ -28,6 +29,11 @@ func init() {
 	}
 
 	projectID = projectIDtmp // Fuck you, Go!
+
+	v, ok := os.LookupEnv("SECRETS_PAYLOAD_LOGGING")
+	if ok && v == "true" {
+		secretsPayloadLogging = true
+	}
 
 	var err error
 	SecretsManagerClient, err = secretmanager.NewClient(ctx)
@@ -63,7 +69,9 @@ func (c Client) Get(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	logger.Debugf("Got secret '%v': %+v", name, secret)
+	if secretsPayloadLogging {
+		logger.Debugf("Got secret '%v': %+v", name, secret)
+	}
 
 	return secret.GetPayload().GetData(), nil
 }
