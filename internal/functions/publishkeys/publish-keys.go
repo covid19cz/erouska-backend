@@ -128,6 +128,13 @@ func persistKeysForEfgs(ctx context.Context, config *config, request v1.PublishK
 		visitedCountries = config.defaultVisitedCountries
 	}
 
+	// non-travelling users, willing to share their keys
+	if !request.Traveler {
+		visitedCountries = []string{}
+	}
+
+	logger.Debugf("Using visitedCountries: %+v", visitedCountries)
+
 	// Days since onset of symptoms
 	// Try to read it from VC and if not present, use the default value.
 	dos := extractDSOS(request)
@@ -200,12 +207,16 @@ func passToKeyServer(ctx context.Context, config *config, request *v1.PublishKey
 }
 
 func loadConfig(ctx context.Context) (*config, error) {
+	logger := logging.FromContext(ctx).Named("publish-keys.loadConfig")
+
 	secretsClient := secrets.Client{}
 
 	visitedCountries, err := secretsClient.Get("efgs-default-visited-countries")
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Debugf("Loaded default visited countries: %+v", visitedCountries)
 
 	keyServerConfig, err := utils.LoadKeyServerConfig(ctx)
 	if err != nil {
