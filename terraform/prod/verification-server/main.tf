@@ -37,9 +37,15 @@ module "alerting" {
   source                      = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform/alerting?ref=v0.17.0"
   verification-server-project = var.project
   monitoring-host-project     = var.project
-  server_hosts                = module.vf.server_urls
-  apiserver_hosts             = module.vf.apiserver_urls
-  adminapi_hosts              = module.vf.adminapi_urls
+  server_hosts = [
+    replace(module.vf.server_urls[0], "https://", "")
+  ]
+  apiserver_hosts = [
+    replace(module.vf.apiserver_urls[0], "https://", ""),
+  ]
+  adminapi_hosts = [
+    replace(module.vf.adminapi_urls[0], "https://", ""),
+  ]
   alert-notification-channels = {
     email = {
       labels = {
