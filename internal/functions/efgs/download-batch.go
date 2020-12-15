@@ -12,7 +12,6 @@ import (
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/realtimedb"
-	"github.com/covid19cz/erouska-backend/internal/utils"
 	redisclient "github.com/go-redis/redis/v8"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"github.com/stretchr/stew/slice"
@@ -30,9 +29,11 @@ func DownloadAndSaveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := logging.FromContext(ctx).Named("efgs.DownloadAndSaveKeys")
 
+	now := time.Now()
+
 	config, err := loadDownloadConfig(ctx)
 	if err == nil {
-		err = downloadAndSaveKeys(ctx, config)
+		err = downloadAndSaveKeys(ctx, config, now)
 	}
 
 	if err != nil {
@@ -53,8 +54,10 @@ func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = downloadAllRecursively(ctx, config, efgsapi.BatchDownloadParams{
-		Date: time.Now().Add(time.Hour * -24).Format("2006-01-02"),
+	yesterday := time.Now().Add(time.Hour * -24)
+
+	err = downloadAllRecursively(ctx, config, yesterday, efgsapi.BatchDownloadParams{
+		Date: yesterday.Format("2006-01-02"),
 	})
 
 	if err != nil {
@@ -63,7 +66,7 @@ func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func downloadAndSaveKeys(ctx context.Context, config *downloadConfig) error {
+func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.Time) error {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAndSaveKeys")
 
 	mutex, err := config.MutexManager.Lock(efgsconstants.MutexNameDownloadAndSaveKeys)
@@ -74,7 +77,6 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig) error {
 
 	// Default params:
 
-	now := time.Now()
 	batchParams := efgsapi.BatchDownloadParams{
 		Date:     now.Format("2006-01-02"),
 		BatchTag: now.Format("20060102") + "-1",
@@ -88,8 +90,9 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig) error {
 	}
 
 	if loadedBatchParams != nil {
+		logger.Debugf("Batch params found: %v", batchParams)
+
 		if loadedBatchParams.Date == batchParams.Date {
-			logger.Debugf("Batch params found: %v", batchParams)
 			batchParams = *loadedBatchParams
 		} else {
 			logger.Debugf("Found batch params from another day, discarding and using the default: %v", batchParams)
@@ -118,31 +121,27 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig) error {
 			return err
 		}
 
-		logger.Infof("Successfully enqueued downloaded keys for import to our Key server")
+		logger.Infof("Successfully enqueued %v downloaded keys for import to our Key server", keysCount)
 
-		if err = updateDownloadedCounters(ctx, config.RealtimeDBClient, keysCount); err != nil {
-			logger.Warnf("Could not update EFGS download counters: %v", err)
+		// Save params for next run:
+
+		nextBatch := nextBatchParams(ctx, now, batchParams)
+		logger.Debugf("Next batch will be: %+v", nextBatch)
+		bytes, err := json.Marshal(nextBatch)
+		if err != nil {
+			return err
 		}
-	}
 
-	// Save params for next run:
-
-	nextBatch := nextBatchParams(ctx, batchParams)
-	logger.Debugf("Next batch will be: %+v", nextBatch)
-	bytes, err := json.Marshal(nextBatch)
-	if err != nil {
-		return err
-	}
-
-	if err = config.RedisClient.Set(efgsconstants.RedisKeyNextBatch, string(bytes), 0); err != nil {
-		logger.Errorf("Could not save next batch params to Redis: %+v", err)
-		return err
+		if err = config.RedisClient.Set(efgsconstants.RedisKeyNextBatch, string(bytes), 0); err != nil {
+			logger.Errorf("Could not save next batch params to Redis: %+v", err)
+			return err
+		}
 	}
 
 	return err
 }
 
-func downloadAllRecursively(ctx context.Context, config *downloadConfig, params efgsapi.BatchDownloadParams) error {
+func downloadAllRecursively(ctx context.Context, config *downloadConfig, now time.Time, params efgsapi.BatchDownloadParams) error {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAllRecursively")
 
 	var keys []efgsapi.DiagnosisKey
@@ -162,21 +161,27 @@ func downloadAllRecursively(ctx context.Context, config *downloadConfig, params 
 		// This ends once
 		if moreKeysAvailable {
 			keys = append(keys, moreKeys...)
-			params = nextBatchParams(ctx, params)
+			params = nextBatchParams(ctx, now, params)
 		}
 	}
 
 	// Enqueue downloaded keys:
 
-	if len(keys) > 0 {
-		logger.Infof("Successfully downloaded %v keys from EFGS, going to enqueue them", len(keys))
+	keysCount := len(keys)
+
+	if keysCount > 0 {
+		logger.Infof("Successfully downloaded %v keys from EFGS, going to enqueue them", keysCount)
 
 		if err := enqueueForImport(ctx, config, keys); err != nil {
 			logger.Errorf("Could not download batch from EFGS: %v", err)
 			return err
 		}
 
-		logger.Infof("Successfully enqueued downloaded keys for import to our Key server")
+		logger.Infof("Successfully enqueued %v downloaded keys for import to our Key server", keysCount)
+
+		if err := updateDownloadedCounters(ctx, config, now, keysCount); err != nil {
+			logger.Warnf("Could not update EFGS download counters: %v", err)
+		}
 	}
 
 	return nil
@@ -203,10 +208,8 @@ func downloadKeys(ctx context.Context, config *downloadConfig, params efgsapi.Ba
 	return keys, nil
 }
 
-func nextBatchParams(ctx context.Context, last efgsapi.BatchDownloadParams) efgsapi.BatchDownloadParams {
+func nextBatchParams(ctx context.Context, now time.Time, last efgsapi.BatchDownloadParams) efgsapi.BatchDownloadParams {
 	logger := logging.FromContext(ctx).Named("efgs.nextBatchParams")
-
-	now := time.Now()
 
 	today := now.Format("2006-01-02")
 	batchTagPrefix := now.Format("20060102")
@@ -403,19 +406,19 @@ func loadBatchParams(config *downloadConfig) (*efgsapi.BatchDownloadParams, erro
 	return &savedBatchParams, nil
 }
 
-func updateDownloadedCounters(ctx context.Context, client *realtimedb.Client, keysCount int) error {
+func updateDownloadedCounters(ctx context.Context, config *downloadConfig, now time.Time, keysCount int) error {
 	logger := logging.FromContext(ctx).Named("efgs.download-batch.updateDownloadedCounters")
 
-	var date = utils.GetTimeNow().Format("20060102")
+	var date = now.Format("20060102")
 
 	// update daily counter
-	if err := updateDownloadedCounter(ctx, client, constants.DbEfgsCountersPrefix+date, keysCount); err != nil {
+	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+date, func(c int) int { return keysCount }); err != nil {
 		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
 		return err
 	}
 
 	// update total counter
-	if err := updateDownloadedCounter(ctx, client, constants.DbEfgsCountersPrefix+"total", keysCount); err != nil {
+	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+"total", func(c int) int { return c + keysCount }); err != nil {
 		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
 		return err
 	}
@@ -423,7 +426,7 @@ func updateDownloadedCounters(ctx context.Context, client *realtimedb.Client, ke
 	return nil
 }
 
-func updateDownloadedCounter(ctx context.Context, client *realtimedb.Client, dbKey string, keysCount int) error {
+func updateDownloadedCounter(ctx context.Context, client *realtimedb.Client, dbKey string, countFn func(int) int) error {
 	logger := logging.FromContext(ctx).Named("efgs.download-batch.updateDownloadedCounter")
 
 	return client.RunTransaction(ctx, dbKey, func(tn db.TransactionNode) (interface{}, error) {
@@ -435,7 +438,7 @@ func updateDownloadedCounter(ctx context.Context, client *realtimedb.Client, dbK
 
 		logger.Debugf("Found counter state, dbKey %v: %+v", dbKey, state)
 
-		state.KeysDownloaded += keysCount
+		state.KeysDownloaded = countFn(state.KeysDownloaded)
 
 		logger.Debugf("Saving updated counter state, dbKey %v: %+v", dbKey, state)
 
