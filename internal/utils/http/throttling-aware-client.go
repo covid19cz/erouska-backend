@@ -18,7 +18,9 @@ func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format
 
 	client.RetryMax = 15
 	client.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-		return resp.StatusCode == 429, nil
+		shouldRetry := resp == nil || resp.StatusCode == 429
+
+		return shouldRetry, nil
 	}
 	client.ErrorHandler = retryablehttp.PassthroughErrorHandler
 	client.Backoff = func(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
