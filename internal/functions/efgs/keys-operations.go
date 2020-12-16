@@ -17,11 +17,13 @@ import (
 )
 
 //ToDiagnosisKey Converts ExposureKey to DiagnosisKey
-func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountries []string, daysSinceOnsetOfSymptoms int) *efgsapi.DiagnosisKey {
+func ToDiagnosisKey(symptomsSince time.Time, key *keyserverapi.ExposureKey, origin string, visitedCountries []string) *efgsapi.DiagnosisKey {
 	bytes, err := b64.StdEncoding.DecodeString(key.Key)
 	if err != nil {
 		panic(err) // this would be very, very bad!
 	}
+
+	dsos := getDSOS(symptomsSince, key.IntervalNumber)
 
 	return &efgsapi.DiagnosisKey{
 		KeyData:                    bytes,
@@ -31,8 +33,12 @@ func ToDiagnosisKey(key *keyserverapi.ExposureKey, origin string, visitedCountri
 		VisitedCountries:           visitedCountries,
 		Origin:                     origin,
 		ReportType:                 efgsapi.ReportType_CONFIRMED_TEST,
-		DaysSinceOnsetOfSymptoms:   int32(daysSinceOnsetOfSymptoms),
+		DaysSinceOnsetOfSymptoms:   dsos,
 	}
+}
+
+func getDSOS(symptomsSince time.Time, intervalNumber int32) int32 {
+	return -(int32(symptomsSince.Truncate(24*time.Hour).Unix()/600) - intervalNumber) / 144
 }
 
 func diagnosisKeyToBytes(key *efgsapi.DiagnosisKey) []byte {

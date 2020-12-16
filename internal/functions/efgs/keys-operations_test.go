@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
+	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
@@ -11,7 +12,97 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 )
+
+func TestToDiagnosisKey(t *testing.T) {
+	type args struct {
+		symptomsDate time.Time
+		key          *keyserverapi.ExposureKey
+	}
+
+	parsed := func(start string) time.Time {
+		t, err := time.Parse("2.1.2006", start)
+		if err != nil {
+			panic(err)
+		}
+		return t
+	}
+
+	newExpKey := func(start string) *efgsapi.ExpKey {
+		interval := parsed(start).Unix() / 600
+		return &efgsapi.ExpKey{Key: "YQ==", IntervalNumber: int32(interval), IntervalCount: 144, TransmissionRisk: 2}
+	}
+
+	newDiagKey := func(start string, dsos int32) *efgsapi.DiagnosisKey {
+		interval := parsed(start).Unix() / 600
+		return &efgsapi.DiagnosisKey{
+			KeyData:                    []byte{97},
+			RollingStartIntervalNumber: uint32(interval),
+			RollingPeriod:              144,
+			TransmissionRiskLevel:      2,
+			VisitedCountries:           []string{"DE"},
+			Origin:                     "CZ",
+			ReportType:                 efgsapi.ReportType_CONFIRMED_TEST,
+			DaysSinceOnsetOfSymptoms:   dsos,
+		}
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *efgsapi.DiagnosisKey
+	}{
+		{
+			name: "basic-after1",
+			args: args{
+				symptomsDate: parsed("10.12.2020"),
+				key:          newExpKey("10.12.2020"),
+			},
+			want: newDiagKey("10.12.2020", 0),
+		},
+		{
+			name: "basic-after2",
+			args: args{
+				symptomsDate: parsed("10.12.2020"),
+				key:          newExpKey("9.12.2020"),
+			},
+			want: newDiagKey("9.12.2020", -1),
+		},
+		{
+			name: "basic-after3",
+			args: args{
+				symptomsDate: parsed("10.12.2020"),
+				key:          newExpKey("5.12.2020"),
+			},
+			want: newDiagKey("5.12.2020", -5),
+		},
+		{
+			name: "basic-before1",
+			args: args{
+				symptomsDate: parsed("9.12.2020"),
+				key:          newExpKey("10.12.2020"),
+			},
+			want: newDiagKey("10.12.2020", 1),
+		},
+		{
+			name: "basic-before2",
+			args: args{
+				symptomsDate: parsed("5.12.2020"),
+				key:          newExpKey("10.12.2020"),
+			},
+			want: newDiagKey("10.12.2020", 5),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ToDiagnosisKey(tt.args.symptomsDate, tt.args.key, "CZ", []string{"DE"}); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToDiagnosisKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestSplitKeysProp(t *testing.T) {
 	// In real world, some states upload even same-day-TEKs which cause troubles with batches alignment.

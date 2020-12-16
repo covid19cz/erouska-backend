@@ -26,8 +26,8 @@ import (
 
 const (
 	countryOfOrigin              = "CZ"
-	defaultTransmissionRiskLevel = 2 // see docs for ExposureKey - "CONFIRMED will lead to TR 2"
-	defaultDSOS                  = 3 // "days since onset of symptoms" - this is a good default/fallback value because it's taken as serious by the EN API
+	defaultTransmissionRiskLevel = 2  // see docs for ExposureKey - "CONFIRMED will lead to TR 2"
+	defaultSymptomDate           = -1 // == yesterday - this is a good default/fallback value because it's taken as serious by the EN API
 )
 
 type config struct {
@@ -135,19 +135,15 @@ func persistKeysForEfgs(ctx context.Context, config *config, request v1.PublishK
 
 	logger.Debugf("Using visitedCountries: %+v", visitedCountries)
 
-	// Days since onset of symptoms
+	// Days of start of symptoms
 	// Try to read it from VC and if not present, use the default value.
-	dos := extractDSOS(request)
+	dos := extractDoS(request)
 
-	if dos <= 0 { // one would use MAX function if Go has some...
-		dos = defaultDSOS
-	}
-
-	logger.Debugf("Extracted DSOS %v", dos)
+	logger.Debugf("Extracted DoS %v", dos.Format("2006-01-02"))
 
 	var keys []*efgsapi.DiagnosisKey
 	for _, k := range request.Keys {
-		diagnosisKey := efgs.ToDiagnosisKey(&k, countryOfOrigin, visitedCountries, dos)
+		diagnosisKey := efgs.ToDiagnosisKey(dos, &k, countryOfOrigin, visitedCountries)
 		if diagnosisKey.TransmissionRiskLevel == 0 {
 			diagnosisKey.TransmissionRiskLevel = defaultTransmissionRiskLevel
 		}
@@ -257,7 +253,11 @@ func sendResponseToClient(ctx context.Context, w http.ResponseWriter, response *
 	}
 }
 
-func extractDSOS(request v1.PublishKeysRequestDevice) int {
+func extractDoS(request v1.PublishKeysRequestDevice) time.Time {
+	defaultDoS := func() time.Time {
+		return time.Now().Add(defaultSymptomDate * 24 * time.Hour).Truncate(24 * time.Hour)
+	}
+
 	// We parse the token but we don't care about signature validation.
 	token, _ := jwt.Parse(request.VerificationPayload, func(token *jwt.Token) (interface{}, error) {
 		return []byte("hello-world"), nil
@@ -267,22 +267,22 @@ func extractDSOS(request v1.PublishKeysRequestDevice) int {
 	// If we got the token too, it's just enough.
 
 	if token == nil {
-		return -1
+		return defaultDoS()
 	}
 
-	// Extract DSOS.
 	if token.Claims == nil {
-		return -1
+		return defaultDoS()
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
 	value, ok := claims["symptomOnsetInterval"]
 	if !ok {
-		return -1
+		return defaultDoS()
 	}
 
 	soi := int64(value.(float64))
-	return int((time.Now().Unix() - soi*600) / 86400)
+
+	return time.Unix(soi*600, 0).Truncate(24 * time.Hour)
 }
 
 func updateCounters(ctx context.Context, client *realtimedb.Client, keysCount int) error {
