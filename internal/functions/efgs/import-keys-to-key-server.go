@@ -19,6 +19,8 @@ import (
 
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
+const defaultDSOS = -1
+
 //ImportKeysToKeyServer Imports keys to Key server
 func ImportKeysToKeyServer(ctx context.Context, m pubsub.Message) error {
 	logger := logging.FromContext(ctx).Named("efgs.ImportKeysToKeyServer")
@@ -107,7 +109,7 @@ func requestNewVC(ctx context.Context, config *publishConfig) (string, error) {
 
 	body, err := json.Marshal(&efgsapi.IssueCodeRequest{
 		TestType:    "confirmed",
-		SymptomDate: time.Now().AddDate(0, 0, -3).Format("2006-01-02"),
+		SymptomDate: time.Now().AddDate(0, 0, defaultDSOS).Format("2006-01-02"),
 	})
 
 	if err != nil {
