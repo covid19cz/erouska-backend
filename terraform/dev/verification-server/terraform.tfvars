@@ -1,4 +1,4 @@
-database_tier              = "db-custom-1-3840"
+database_tier              = "db-g1-small"
 database_disk_size_gb      = "16"
 region                     = "europe-west1"
 cloudscheduler_location    = "europe-west1"
