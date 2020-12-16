@@ -33,7 +33,7 @@ terraform {
   required_providers {
     google      = "~> 3.32"
     google-beta = "~> 3.32"
-    null        = "~> 2.1"
+    null        = "~> 3.0"
     random      = "~> 2.3"
   }
 }
