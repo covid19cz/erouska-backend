@@ -15,3 +15,4 @@ cloudsql_max_connections = 10000
 cloudsql_backup_location = "eu"
 project                  = "erouska-key-server-dev"
 db_version               = "POSTGRES_11"
+pgadmin_domains          = ["pgadmin.notification.dev.evec.cz"]
