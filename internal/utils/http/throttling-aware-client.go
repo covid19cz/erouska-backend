@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -24,9 +23,14 @@ func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format
 	}
 	client.ErrorHandler = retryablehttp.PassthroughErrorHandler
 	client.Backoff = func(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
+		if resp == nil {
+			requestLogger("Error while parsing retry-after header: response is nil!")
+			return 0
+		}
+
 		retryAfter, err := time.Parse(time.RFC1123, resp.Header.Get("retry-after"))
 		if err != nil {
-			fmt.Printf("Error while parsing retry-after header: %v", err)
+			requestLogger("Error while parsing retry-after header: %v", err)
 			return 0
 		}
 
