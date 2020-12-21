@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"encoding/base64"
+	"github.com/covid19cz/erouska-backend/internal/logging"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
 	verifserverapi "github.com/google/exposure-notifications-verification-server/pkg/api"
 	"strconv"
@@ -93,22 +95,26 @@ type BatchImportParams struct {
 
 //DiagnosisKeyWrapper map json response from EFGS to local DiagnosisKey structure
 type DiagnosisKeyWrapper struct {
-	tableName                  struct{}  `pg:"diagnosis_keys,alias:dk"`
-	ID                         int32     `pg:",pk" json:"id"`
-	CreatedAt                  time.Time `pg:"default:now()" json:"created_at"`
-	KeyData                    []byte    `json:"keyData,omitempty"`
-	RollingStartIntervalNumber uint32    `json:"rollingStartIntervalNumber,omitempty"`
-	RollingPeriod              uint32    `json:"rollingPeriod,omitempty"`
-	TransmissionRiskLevel      int32     `json:"transmissionRiskLevel,omitempty"`
-	VisitedCountries           []string  `json:"visitedCountries,omitempty"`
-	Origin                     string    `pg:"default:'CZ'" json:"origin,omitempty"`
-	ReportType                 int       `json:"reportType,omitempty"`
-	DaysSinceOnsetOfSymptoms   int32     `json:"days_since_onset_of_symptoms,omitempty"`
-	Retries                    int       `pg:"default:0" json:"retries,omitempty"`
+	tableName                  struct{}   `pg:"diagnosis_keys,alias:dk"`
+	ID                         int32      `pg:",pk" json:"id"`
+	CreatedAt                  time.Time  `pg:"default:now()" json:"created_at"`
+	KeyData                    string     `pg:",notnull,unique" json:"keyData,omitempty"`
+	RollingStartIntervalNumber uint32     `pg:",use_zero" json:"rollingStartIntervalNumber,omitempty"`
+	RollingPeriod              uint32     `pg:",use_zero" json:"rollingPeriod,omitempty"`
+	TransmissionRiskLevel      int32      `pg:",use_zero" json:"transmissionRiskLevel,omitempty"`
+	VisitedCountries           []string   `json:"visitedCountries,omitempty"`
+	Origin                     string     `pg:"default:'CZ'" json:"origin,omitempty"`
+	ReportType                 ReportType `pg:",use_zero" json:"reportType,omitempty"`
+	DaysSinceOnsetOfSymptoms   int32      `pg:",use_zero" json:"days_since_onset_of_symptoms,omitempty"`
+	Retries                    int        `pg:"default:0,use_zero" json:"retries,omitempty"`
+	IsUploaded                 bool       `pg:"default:False,notnull,use_zero" json:"isUploaded,omitempty"`
 }
 
-//ToData convert struct from DiagnosisKeyWrapper to DiagnosisKey
+//ToData convert struct from DiagnosisKeyWrapper to DiagnosisKey.
 func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
+	var ctx = context.Background()
+	logger := logging.FromContext(ctx).Named("DiagnosisKeyWrapper.ToData")
+
 	rt := wrappedKey.TransmissionRiskLevel
 	if rt > 8 || rt < 0 {
 		// This is a sad story of how EFGS has put this into their protocol and then recommended to not use it because the value meaning can
@@ -121,15 +127,21 @@ func (wrappedKey *DiagnosisKeyWrapper) ToData() *DiagnosisKey {
 		rt = 0 // This is an override for putting 0x7fffffff there
 	}
 
+	byteKeyData, err := base64.StdEncoding.DecodeString(wrappedKey.KeyData)
+	if err != nil {
+		logger.Errorf("Invalid keyData in DiagnosisKeyWrapper: %s", wrappedKey.KeyData)
+		panic(err)
+	}
+
 	return &DiagnosisKey{
-		KeyData:                    wrappedKey.KeyData,
+		KeyData:                    byteKeyData,
 		RollingStartIntervalNumber: wrappedKey.RollingStartIntervalNumber,
 		RollingPeriod:              wrappedKey.RollingPeriod,
 		TransmissionRiskLevel:      rt,
 		Origin:                     wrappedKey.Origin,
 		DaysSinceOnsetOfSymptoms:   wrappedKey.DaysSinceOnsetOfSymptoms,
 		VisitedCountries:           wrappedKey.VisitedCountries,
-		ReportType:                 mapReportTypeInt[wrappedKey.ReportType],
+		ReportType:                 wrappedKey.ReportType,
 	}
 }
 
@@ -152,5 +164,20 @@ func (key *DiagnosisKey) ToExposureKey() keyserverapi.ExposureKey {
 		IntervalNumber:   int32(key.RollingStartIntervalNumber),
 		IntervalCount:    int32(key.RollingPeriod),
 		TransmissionRisk: int(rt),
+	}
+}
+
+//ToWrapper convert struct from DiagnosisKey to DiagnosisKeyWrapper
+func (key *DiagnosisKey) ToWrapper() *DiagnosisKeyWrapper {
+
+	return &DiagnosisKeyWrapper{
+		KeyData:                    base64.StdEncoding.EncodeToString(key.KeyData),
+		RollingStartIntervalNumber: key.RollingStartIntervalNumber,
+		RollingPeriod:              key.RollingPeriod,
+		TransmissionRiskLevel:      key.TransmissionRiskLevel,
+		VisitedCountries:           key.VisitedCountries,
+		Origin:                     key.Origin,
+		ReportType:                 key.ReportType,
+		DaysSinceOnsetOfSymptoms:   key.DaysSinceOnsetOfSymptoms,
 	}
 }

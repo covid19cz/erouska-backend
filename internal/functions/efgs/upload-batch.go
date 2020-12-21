@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"firebase.google.com/go/db"
@@ -17,14 +18,13 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 )
 
-//UploadBatch Called in CRON every 2 hours. Gets keys from database and upload them to EFGS.
+//UploadBatch Called in CRON. Gets keys from database and upload them to EFGS.
 func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	logger := logging.FromContext(ctx).Named("efgs.UploadBatch")
@@ -49,7 +49,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now time.Time, loadKeysSince time.Time) error {
 	logger := logging.FromContext(ctx).Named("efgs.uploadAndRemoveBatch")
 
-	keys, err := uploadConfig.Database.GetDiagnosisKeys(loadKeysSince)
+	keys, err := uploadConfig.Database.GetNotUploadedDiagnosisKeys(loadKeysSince)
 	if err != nil {
 		return fmt.Errorf("DB loading keys error: %s", err)
 	}
@@ -83,10 +83,15 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 		}
 
 		if resp.StatusCode == 201 {
-			if err := uploadConfig.Database.RemoveDiagnosisKeys(batchDbKeys); err != nil {
-				errors = append(errors, fmt.Sprintf("Removing uploaded keys from database failed: %s", err))
+			for _, key := range batchDbKeys {
+				key.IsUploaded = true
+			}
+
+			if err := uploadConfig.Database.UpdateKeys(batchDbKeys); err != nil {
+				errors = append(errors, fmt.Sprintf("Setting keys as uploaded (in database) failed: %s", err))
 				continue
 			}
+
 			logger.Debugf("Batch %s successfully uploaded", uploadConfig.BatchTag)
 
 			if err = updateUploadedCounters(ctx, uploadConfig.RealtimeDBClient, batchKeysCount); err != nil {
@@ -202,16 +207,17 @@ func handleErrorUploadResponse(ctx context.Context, resp *efgsapi.UploadBatchRes
 
 	// This is needed for binary-search below
 	sort.Slice(batchDbKeys, func(i, j int) bool {
-		return bytes.Compare(batchDbKeys[i].KeyData, batchDbKeys[j].KeyData) > 0
+		return strings.Compare(batchDbKeys[i].KeyData, batchDbKeys[j].KeyData) > 0
 	})
 
 	// Find DB entity relevant to DiagnosisKey with given index
 	findRelevantKey := func(index int) *efgsapi.DiagnosisKeyWrapper {
 		lookFor := diagnosesKeys[index].KeyData
+		b64LookFor := base64.StdEncoding.EncodeToString(lookFor)
 
 		// This does binary search.
 		pos := sort.Search(len(batchDbKeys), func(i int) bool {
-			return bytes.Compare(batchDbKeys[i].KeyData, lookFor) <= 0
+			return strings.Compare(batchDbKeys[i].KeyData, b64LookFor) <= 0
 		})
 
 		if pos < len(batchDbKeys) && pos >= 0 {
@@ -238,10 +244,10 @@ func handleErrorUploadResponse(ctx context.Context, resp *efgsapi.UploadBatchRes
 		}
 	}
 
-	// Handle duplicate (already uploaded) keys - should be deleted from our DB
+	// Handle duplicate (already uploaded) keys - must be tagged as uploaded
 	for _, keyIndex := range resp.Duplicate {
 		if key := findRelevantKey(keyIndex); key != nil {
-			key.Retries = math.MaxInt64
+			key.IsUploaded = true
 		}
 	}
 
