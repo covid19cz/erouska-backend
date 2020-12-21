@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/GoogleCloudPlatform/cloudsql-proxy/proxy/proxy"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
 	"net"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -23,6 +25,8 @@ type lazyConnection func() *pg.DB
 type Connection struct {
 	inner lazyConnection
 }
+
+var regexErrNo = regexp.MustCompile(`#[0-9]+`)
 
 //Create new (lazy) database connection pool. Credentials must be specified in secret manager.
 func init() {
@@ -85,26 +89,35 @@ func init() {
 	}
 }
 
-//PersistDiagnosisKeys Save array of DiagnosisKey to database
+//PersistDiagnosisKeys Save array of DiagnosisKey to database.
 func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
 	connection := db.inner().Conn()
 	defer connection.Close()
+	//Persisting MUST be done per key because when is there any duplication, whole batch is rejected.
+	for _, key := range keys {
+		wrappedKey := key.ToWrapper() // diagnosisKey must wrapped - keyData converted to base64
 
-	_, err := connection.Model(&keys).Insert()
-	if err != nil {
-		return err
+		if _, err := connection.Model(wrappedKey).Insert(); err != nil {
+			errorNumber := regexErrNo.Find([]byte(err.Error()))
+			//Check if error is 'only' unique violation (key duplicity) - error no. 23505
+			if !bytes.Equal(errorNumber, []byte("#23505")) {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-//GetDiagnosisKeys Get keys from the DB that are not yet in EFGS and are not older than dateUntil.
-func (db Connection) GetDiagnosisKeys(dateUntil time.Time) ([]*efgsapi.DiagnosisKeyWrapper, error) {
+//GetNotUploadedDiagnosisKeys Get keys from the DB that are not older than dateUntil and NOT IN EFGS.
+func (db Connection) GetNotUploadedDiagnosisKeys(dateUntil time.Time) ([]*efgsapi.DiagnosisKeyWrapper, error) {
 	connection := db.inner().Conn()
 	defer connection.Close()
 
 	var keys []*efgsapi.DiagnosisKeyWrapper
-	if err := connection.Model(&keys).Where("created_at >= ?", dateUntil.Format("2006-01-02")).Select(); err != nil {
+	if err := connection.Model(&keys).
+		Where("created_at >= ?", dateUntil.Format("2006-01-02")).
+		Where("is_uploaded = false").Select(); err != nil {
 		return nil, err
 	}
 
