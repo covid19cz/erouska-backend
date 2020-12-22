@@ -29,6 +29,7 @@ type uploadConfig struct {
 	Database         *efgsdatabase.Connection
 	RealtimeDBClient *realtimedb.Client
 	BatchSizeLimit   int
+	KeyValidityDays  int
 	BatchTag         string
 }
 
@@ -98,6 +99,18 @@ func loadUploadConfig(ctx context.Context) (*uploadConfig, error) {
 	}
 
 	config.BatchSizeLimit = batchSizeLimit
+
+	keyExpiration, isSet := os.LookupEnv("EFGS_EXPOSURE_KEYS_EXPIRATION")
+	if !isSet {
+		return nil, fmt.Errorf("EFGS_EXPOSURE_KEYS_EXPIRATION must be set")
+	}
+
+	keyValidityDays, err := strconv.Atoi(keyExpiration)
+	if err != nil {
+		return nil, fmt.Errorf("Error converting key expiration to int: %s", err)
+	}
+
+	config.KeyValidityDays = keyValidityDays
 
 	return &config, nil
 }

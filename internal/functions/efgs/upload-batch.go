@@ -37,7 +37,7 @@ func UploadBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	loadKeysSince := time.Now().AddDate(0, 0, -14) // TODO make 14 configurable?
+	loadKeysSince := time.Now().AddDate(0, 0, -uploadConfig.KeyValidityDays)
 
 	if err = uploadAndRemoveBatch(ctx, uploadConfig, now, loadKeysSince); err != nil {
 		logger.Errorf("Upload error: %v", err)
@@ -98,7 +98,7 @@ func uploadAndRemoveBatch(ctx context.Context, uploadConfig *uploadConfig, now t
 				logger.Warnf("Could not update EFGS upload counters: %v", err)
 			}
 		} else { // nothing was saved to EFGS
-			msg := fmt.Sprintf("Batch %s was partially invalid and therefore rejected", uploadConfig.BatchTag)
+			msg := fmt.Sprintf("Batch %s was invalid and therefore rejected", uploadConfig.BatchTag)
 			logger.Debugf(msg)
 			errors = append(errors, msg)
 
@@ -192,6 +192,9 @@ func uploadBatch(ctx context.Context, batch *efgsapi.DiagnosisKeyBatch, config *
 
 		logger.Debugf("Some keys in batch were invalid or duplicated: %+v", parsedResponse)
 		return &parsedResponse, nil
+	case 400:
+		logger.Debug("Batch upload failed. No key was uploaded. Response code 400")
+		return &parsedResponse, nil
 	default:
 		logger.Debug("Batch upload failed. No key was uploaded")
 		return &parsedResponse, fmt.Errorf("HTTP %v: %v", res.StatusCode, string(body))
@@ -234,7 +237,10 @@ func handleErrorUploadResponse(ctx context.Context, resp *efgsapi.UploadBatchRes
 		}
 
 		logger.Debugf("Updating retries for failed keys")
-		return uploadConfig.Database.UpdateKeys(batchDbKeys)
+		if err := uploadConfig.Database.UpdateKeys(batchDbKeys); err != nil {
+			return err
+		}
+		return uploadConfig.Database.RemoveInvalidKeys()
 	}
 
 	// Handle errored keys - increase their retries counter, will be removed if the value is too high
