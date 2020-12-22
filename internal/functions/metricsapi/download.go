@@ -25,12 +25,17 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 
 	var req v1.DownloadMetricsRequest
 
-	if !httputils.DecodeJSONOrReportError(w, r, &req) {
-		return
+	providedDate := ""
+
+	if err := httputils.DecodeJSONBody(w, r, &req); err != nil {
+		date := r.URL.Query()["date"]
+		if len(date) > 0 && date[0] != "" {
+			providedDate = date[0]
+		}
 	}
 
-	if req.Date != "" {
-		parse, err := time.Parse("2006-01-02", req.Date)
+	if providedDate != "" {
+		parse, err := time.Parse("2006-01-02", providedDate)
 		if err == nil {
 			date = parse
 		} else {
