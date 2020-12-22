@@ -103,7 +103,7 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.T
 
 	// Download keys:
 
-	keys, err := downloadKeys(ctx, config, batchParams)
+	keys, err := downloadKeys(ctx, config, batchParams.Date, batchParams.BatchTag)
 	if err != nil {
 		logger.Debugf("Could not download batch from EFGS: %v", err)
 		return err
@@ -151,7 +151,7 @@ func downloadAllRecursively(ctx context.Context, config *downloadConfig, now tim
 	// Download all available keys, starting with batch in `params`
 
 	for moreKeysAvailable {
-		moreKeys, err := downloadKeys(ctx, config, params)
+		moreKeys, err := downloadKeys(ctx, config, params.Date, params.BatchTag)
 		if err != nil {
 			return err
 		}
@@ -162,6 +162,8 @@ func downloadAllRecursively(ctx context.Context, config *downloadConfig, now tim
 		if moreKeysAvailable {
 			keys = append(keys, moreKeys...)
 			params = nextBatchParams(ctx, now, params)
+		} else {
+			logger.Infof("Batch %v doesn't exist, stopping", params.BatchTag)
 		}
 	}
 
@@ -185,27 +187,6 @@ func downloadAllRecursively(ctx context.Context, config *downloadConfig, now tim
 	}
 
 	return nil
-}
-
-func downloadKeys(ctx context.Context, config *downloadConfig, params efgsapi.BatchDownloadParams) ([]efgsapi.DiagnosisKey, error) {
-	logger := logging.FromContext(ctx).Named("efgs.downloadKeys")
-
-	logger.Infof("About to download batch with tag '%v' for date %v!", params.BatchTag, params.Date)
-
-	logger.Debugf("Using config: %+v", config)
-
-	keys, err := downloadBatchByTag(ctx, config, params.Date, params.BatchTag)
-	if err != nil {
-		logger.Debugf("Could not download batch from EFGS: %v", err)
-		return nil, err
-	}
-
-	if len(keys) == 0 {
-		logger.Infof("No keys returned from EFGS for date %v and batchTag '%v'", params.Date, params.BatchTag)
-		return nil, nil
-	}
-
-	return keys, nil
 }
 
 func nextBatchParams(ctx context.Context, now time.Time, last efgsapi.BatchDownloadParams) efgsapi.BatchDownloadParams {
@@ -315,11 +296,12 @@ func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsap
 	return nil
 }
 
-func downloadBatchByTag(ctx context.Context, config *downloadConfig, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
+func downloadKeys(ctx context.Context, config *downloadConfig, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
 	logger := logging.FromContext(ctx).Named("efgs.downloadBatchByTag")
 
-	url := config.URL
+	logger.Infof("About to download batch with tag '%v' for date %v!", batchTag, date)
 
+	url := config.URL
 	url.Path = "diagnosiskeys/download/" + date
 
 	req, err := http.NewRequest("GET", url.String(), nil)
@@ -369,7 +351,8 @@ func downloadBatchByTag(ctx context.Context, config *downloadConfig, date string
 	}
 
 	if resp.StatusCode == 404 {
-		return []efgsapi.DiagnosisKey{}, nil
+		logger.Debugf("EFGS batch with tag '%v' doesn't exist", batchTag)
+		return nil, nil
 	}
 
 	if resp.StatusCode != 200 {
@@ -381,6 +364,11 @@ func downloadBatchByTag(ctx context.Context, config *downloadConfig, date string
 	if err = json.Unmarshal(body, &batchResponse); err != nil {
 		logger.Debugf("Download response parsing error: %v, body: %v", err, string(body))
 		return nil, err
+	}
+
+	if batchResponse.Keys == nil {
+		logger.Debugf("No keys returned from EFGS for date %v and batchTag '%v'", date, batchTag)
+		batchResponse.Keys = []efgsapi.DiagnosisKey{}
 	}
 
 	return batchResponse.Keys, nil
