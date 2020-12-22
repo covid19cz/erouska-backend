@@ -25,12 +25,17 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 
 	var req v1.DownloadMetricsRequest
 
+	providedDate := ""
+
 	if err := httputils.DecodeJSONBody(w, r, &req); err != nil {
-		logger.Warnf("Invalid request, ignoring: %v", err)
+		date := r.URL.Query()["date"]
+		if len(date) > 0 && date[0] != "" {
+			providedDate = date[0]
+		}
 	}
 
-	if req.Date != "" {
-		parse, err := time.Parse("2006-01-02", req.Date)
+	if providedDate != "" {
+		parse, err := time.Parse("2006-01-02", providedDate)
 		if err == nil {
 			date = parse
 		} else {
