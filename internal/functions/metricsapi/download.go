@@ -12,16 +12,24 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
+	"strings"
 	"time"
 )
+
+var startOfData = time.Date(2020, 10, 23, 0, 0, 0, 0, time.UTC)
 
 //DownloadMetrics Serves most current version of metrics.
 func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
-	logger := logging.FromContext(ctx).Named("DownloadMetrics")
 
 	client := store.Client{}
 	date := time.Now()
+
+	downloadMetrics(ctx, w, r, client, date)
+}
+
+func downloadMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, client store.Client, date time.Time) {
+	logger := logging.FromContext(ctx).Named("metricsapi.downloadMetrics")
 
 	var req v1.DownloadMetricsRequest
 
@@ -32,18 +40,31 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 		if len(date) > 0 && date[0] != "" {
 			providedDate = date[0]
 		}
+	} else {
+		providedDate = req.Date
+	}
+
+	if strings.ToLower(providedDate) == "all" {
+		downloadAll(ctx, w, r, client, date)
+		return
 	}
 
 	if providedDate != "" {
-		parse, err := time.Parse("2006-01-02", providedDate)
+		parsed, err := time.Parse("2006-01-02", providedDate)
 		if err == nil {
-			date = parse
+			date = parsed
 		} else {
-			logger.Debugf("Could not parse requested date, fallback to today: %v", err)
+			logger.Debugf("Could not parse requested date '%v': %v", providedDate, err)
 		}
 	}
 
-	data, err := downloadMetrics(ctx, client, date)
+	downloadSingle(ctx, w, r, client, date)
+}
+
+func downloadSingle(ctx context.Context, w http.ResponseWriter, r *http.Request, client store.Client, date time.Time) {
+	logger := logging.FromContext(ctx).Named("metricsapi.downloadSingle")
+
+	data, err := loadData(ctx, client, date)
 	if err != nil {
 		logger.Error(err)
 		httputils.SendErrorResponse(w, r, fmt.Errorf("Error while fetching data"))
@@ -58,7 +79,33 @@ func DownloadMetrics(w http.ResponseWriter, r *http.Request) {
 	httputils.SendResponse(w, r, data)
 }
 
-func downloadMetrics(ctx context.Context, client store.Client, date time.Time) (*v1.DownloadMetricsResponse, error) {
+func downloadAll(ctx context.Context, w http.ResponseWriter, r *http.Request, client store.Client, today time.Time) {
+	logger := logging.FromContext(ctx).Named("metricsapi.downloadAll")
+
+	var allData []structs.MetricsData
+
+	date := today
+	for days := 0; !date.Before(startOfData); days++ {
+		data, err := loadData(ctx, client, date)
+		if err != nil {
+			logger.Error(err)
+			httputils.SendErrorResponse(w, r, fmt.Errorf("Error while fetching data"))
+			return
+		}
+
+		date = date.Add(-24 * time.Hour)
+
+		if data == nil {
+			continue
+		}
+
+		allData = append(allData, *data)
+	}
+
+	httputils.SendResponse(w, r, allData)
+}
+
+func loadData(ctx context.Context, client store.Client, date time.Time) (*structs.MetricsData, error) {
 	logger := logging.FromContext(ctx).Named("fetchMetrics")
 
 	logger.Infof("Getting metrics data for %v", date.Format("02.01.2006"))
