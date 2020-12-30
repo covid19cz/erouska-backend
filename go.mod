@@ -20,6 +20,7 @@ require (
 	github.com/google/go-cmp v0.5.3
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/leanovate/gopter v0.2.9
+	github.com/lithammer/shortuuid/v3 v3.0.5
 	github.com/sethvargo/go-envconfig v0.3.2
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/stretchr/stew v0.0.0-20130812190256-80ef0842b48b
