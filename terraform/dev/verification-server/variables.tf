@@ -192,3 +192,8 @@ variable "enx_redirect_domain_map" {
   default     = []
   description = "Redirect domains and environments."
 }
+
+variable "pgadmin_domains" {
+  type        = list(string)
+  description = "domain names for pgadmin"
+}
