@@ -19,6 +19,7 @@ import (
 	"github.com/covid19cz/erouska-backend/internal/utils"
 	"github.com/covid19cz/erouska-backend/pkg/api/v1"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/lithammer/shortuuid/v3"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -36,6 +37,7 @@ type config struct {
 	realtimeDBClient        *realtimedb.Client
 	efgsdatabase            *efgsdatabase.Connection
 	defaultVisitedCountries []string
+	correlationID           string
 }
 
 //PublishKeys Handler
@@ -47,7 +49,9 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		panic("fuck")
+		logger.Errorf("Could not read request body: %v", err)
+		http.Error(w, "Could not read body", http.StatusInternalServerError)
+		return
 	}
 
 	if efgsutils.EfgsExtendedLogging {
@@ -64,22 +68,24 @@ func PublishKeys(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("Handling PublishKeys request: %+v", request)
 	}
 
-	config, err := loadConfig(ctx)
+	config, err := loadConfig(ctx, shortuuid.New())
 	if err != nil {
 		logger.Errorf("Could not load config: %v", err)
 		http.Error(w, "Could not load config", http.StatusInternalServerError)
 		return
 	}
 
-	publishKeys(ctx, config, w, request)
+	publishKeys(ctx, config, w, request, r.Header)
 }
 
-func publishKeys(ctx context.Context, config *config, w http.ResponseWriter, request v1.PublishKeysRequestDevice) {
+func publishKeys(ctx context.Context, config *config, w http.ResponseWriter, requestPayload v1.PublishKeysRequestDevice, requestHeaders http.Header) {
 	logger := logging.FromContext(ctx).Named("publish-keys.publishKeys")
 
-	var serverRequest = toServerRequest(&request)
+	logger.Debugf("Handling request with correlation ID '%v'", config.correlationID)
 
-	serverResponse, err := passToKeyServer(ctx, config, serverRequest)
+	var serverRequest = toServerRequest(&requestPayload)
+
+	serverResponse, err := passToKeyServer(ctx, config, serverRequest, requestHeaders)
 	if err != nil {
 		logger.Errorf("Could not obtain response from Key server: %v", err)
 		return
@@ -100,10 +106,10 @@ func publishKeys(ctx context.Context, config *config, w http.ResponseWriter, req
 			// don't fail, this is not so important
 		}
 
-		if request.ConsentToFederation {
+		if requestPayload.ConsentToFederation {
 			logger.Debug("Going to save uploaded keys to EFGS database")
 
-			if err = persistKeysForEfgs(ctx, config, request); err != nil {
+			if err = persistKeysForEfgs(ctx, config, requestPayload); err != nil {
 				logger.Errorf("Error while processing keys persistence: %v", err)
 				// don't fail, this is not so important
 			} else {
@@ -157,10 +163,10 @@ func persistKeysForEfgs(ctx context.Context, config *config, request v1.PublishK
 	return config.efgsdatabase.PersistDiagnosisKeys(keys)
 }
 
-func passToKeyServer(ctx context.Context, config *config, request *v1.PublishKeysRequestServer) (*v1.PublishKeysResponseServer, error) {
+func passToKeyServer(ctx context.Context, config *config, requestPayload *v1.PublishKeysRequestServer, requestHeaders http.Header) (*v1.PublishKeysResponseServer, error) {
 	logger := logging.FromContext(ctx).Named("publish-keys.passToKeyServer")
 
-	blob, err := json.Marshal(request)
+	blob, err := json.Marshal(requestPayload)
 	if err != nil {
 		logger.Debugf("Could not serialize request for Key server: %v", err)
 		return nil, err
@@ -171,7 +177,13 @@ func passToKeyServer(ctx context.Context, config *config, request *v1.PublishKey
 		logger.Debugf("Could not create request for Key server: %v", err)
 		return nil, err
 	}
+
+	req.Header = requestHeaders.Clone()
 	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-Forwarded-By", "PublishKeys-Proxy")
+	req.Header.Add("X-Request-Id", config.correlationID)
+
+	logger.Debugf("Using request headers: %+v", req.Header)
 
 	response, err := config.client.Do(req)
 	if err != nil {
@@ -202,7 +214,7 @@ func passToKeyServer(ctx context.Context, config *config, request *v1.PublishKey
 	return &serverResponse, nil
 }
 
-func loadConfig(ctx context.Context) (*config, error) {
+func loadConfig(ctx context.Context, correlationID string) (*config, error) {
 	logger := logging.FromContext(ctx).Named("publish-keys.loadConfig")
 
 	secretsClient := secrets.Client{}
@@ -211,8 +223,6 @@ func loadConfig(ctx context.Context) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Debugf("Loaded default visited countries: %+v", visitedCountries)
 
 	keyServerConfig, err := utils.LoadKeyServerConfig(ctx)
 	if err != nil {
@@ -224,10 +234,15 @@ func loadConfig(ctx context.Context) (*config, error) {
 		client:           &http.Client{},
 		realtimeDBClient: &realtimedb.Client{},
 		efgsdatabase:     &efgsdatabase.Database,
+		correlationID:    correlationID,
 	}
 
 	if err = json.Unmarshal(visitedCountries, &config.defaultVisitedCountries); err != nil {
 		return nil, err
+	}
+
+	if efgsutils.EfgsExtendedLogging {
+		logger.Debugf("Loaded default visited countries: %+v", config.defaultVisitedCountries)
 	}
 
 	return &config, nil
