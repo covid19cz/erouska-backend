@@ -6,6 +6,7 @@ import (
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
 	"firebase.google.com/go/db"
+	"firebase.google.com/go/messaging"
 	"log"
 	"os"
 )
@@ -18,6 +19,9 @@ var FirestoreClient *firestore.Client
 
 //FirebaseAuth -_-
 var FirebaseAuth *auth.Client
+
+//FirebaseMessaging -_-
+var FirebaseMessaging *messaging.Client
 
 func init() {
 	ctx := context.Background()
@@ -46,17 +50,24 @@ func init() {
 	if err != nil {
 		log.Fatalf("firebase.NewApp: %v", err)
 	}
+
 	FirebaseDbClient, err = app.Database(ctx)
 	if err != nil {
 		log.Fatalf("app.Firestore: %v", err)
 	}
+
 	FirestoreClient, err = app.Firestore(ctx)
 	if err != nil {
 		log.Fatalf("app.Firestore: %v", err)
 	}
+
 	FirebaseAuth, err = app.Auth(ctx)
 	if err != nil {
 		log.Fatalf("error getting Auth client: %v\n", err)
 	}
 
+	FirebaseMessaging, err = app.Messaging(ctx)
+	if err != nil {
+		log.Fatalf("error getting Messaging client: %v\n", err)
+	}
 }
