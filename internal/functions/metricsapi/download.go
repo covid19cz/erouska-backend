@@ -58,10 +58,13 @@ func downloadMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	downloadSingle(ctx, w, r, client, date)
+	// The fallback is allowed only when the date is not explicit
+	fallbackToYesterday := providedDate == ""
+
+	downloadSingle(ctx, w, r, client, date, fallbackToYesterday)
 }
 
-func downloadSingle(ctx context.Context, w http.ResponseWriter, r *http.Request, client store.Client, date time.Time) {
+func downloadSingle(ctx context.Context, w http.ResponseWriter, r *http.Request, client store.Client, date time.Time, fallbackToYesterday bool) {
 	logger := logging.FromContext(ctx).Named("metricsapi.downloadSingle")
 
 	data, err := loadData(ctx, client, date)
@@ -72,6 +75,12 @@ func downloadSingle(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	if data == nil {
+		if fallbackToYesterday {
+			logger.Infof("Data for %v not found, fallback to yesterday", date.Format("02.01.2006"))
+			downloadSingle(ctx, w, r, client, date.Add(-24*time.Hour), false)
+			return
+		}
+
 		http.Error(w, "Data not found", 404)
 		return
 	}
