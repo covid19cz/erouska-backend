@@ -16,6 +16,11 @@ variable "instance_name" {
   description = "The desired name to assign to the deployed instance"
 }
 
+variable "instance_type" {
+  description = "The desired machine_type of deployed instance"
+  default     = "e2-micro"
+}
+
 variable "zone" {
   description = "The GCP zone to deploy instances into"
   type        = string
