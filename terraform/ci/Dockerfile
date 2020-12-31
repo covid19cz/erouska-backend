@@ -1,5 +1,7 @@
-ARG ATLANTIS_IMAGE=runatlantis/atlantis:v0.15.1
+ARG ATLANTIS_IMAGE=runatlantis/atlantis:v0.16.0
+ARG TERRAFORM_VERSION=0.13.5
 FROM $ATLANTIS_IMAGE
 
+ENV DEFAULT_TERRAFORM_VERSION=$TERRAFORM_VERSION
 # copy certificates
 COPY --chown=atlantis tls /etc/atlantis/tls
