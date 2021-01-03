@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"github.com/GoogleCloudPlatform/cloudsql-proxy/proxy/proxy"
 	efgsapi "github.com/covid19cz/erouska-backend/internal/functions/efgs/api"
+	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
+	"go.uber.org/zap"
 	"net"
 	"regexp"
 	"sync"
@@ -23,7 +25,8 @@ type lazyConnection func() *pg.DB
 
 //Connection Contains database connection pool.
 type Connection struct {
-	inner lazyConnection
+	inner  lazyConnection
+	logger *zap.SugaredLogger
 }
 
 var regexErrNo = regexp.MustCompile(`#[0-9]+`)
@@ -85,24 +88,32 @@ func init() {
 	}
 
 	Database = Connection{
-		inner: initInner,
+		inner:  initInner,
+		logger: logging.FromContext(context.Background()).Named("efgs").Named("database"),
 	}
 }
 
 //PersistDiagnosisKeys Save array of DiagnosisKey to database.
 func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
+	logger := db.logger.Named("PersistDiagnosisKeys")
 	connection := db.inner().Conn()
 	defer connection.Close()
+
 	//Persisting MUST be done per key because when is there any duplication, whole batch is rejected.
 	for _, key := range keys {
 		wrappedKey := key.ToWrapper() // diagnosisKey must wrapped - keyData converted to base64
 
-		if _, err := connection.Model(wrappedKey).Insert(); err != nil {
+		if _, err := connection.Model(wrappedKey).Returning("*").Insert(); err != nil {
 			errorNumber := regexErrNo.Find([]byte(err.Error()))
+			if efgsutils.EfgsExtendedLogging {
+				logger.Debugf("Key cannot be saved (err no. %s) to EFGS DB: %v", errorNumber, wrappedKey)
+			}
 			//Check if error is 'only' unique violation (key duplicity) - error no. 23505
 			if !bytes.Equal(errorNumber, []byte("#23505")) {
 				return err
 			}
+		} else if efgsutils.EfgsExtendedLogging {
+			logger.Debugf("Saved key to EFGS DB: %v", wrappedKey)
 		}
 	}
 
@@ -111,6 +122,7 @@ func (db Connection) PersistDiagnosisKeys(keys []*efgsapi.DiagnosisKey) error {
 
 //GetNotUploadedDiagnosisKeys Get keys from the DB that are not older than dateUntil and NOT IN EFGS.
 func (db Connection) GetNotUploadedDiagnosisKeys(dateUntil time.Time) ([]*efgsapi.DiagnosisKeyWrapper, error) {
+	logger := db.logger.Named("GetNotUploadedDiagnosisKeys")
 	connection := db.inner().Conn()
 	defer connection.Close()
 
@@ -121,14 +133,26 @@ func (db Connection) GetNotUploadedDiagnosisKeys(dateUntil time.Time) ([]*efgsap
 		return nil, err
 	}
 
+	if efgsutils.EfgsExtendedLogging {
+		for _, key := range keys {
+			logger.Debugf("Getting not uploaded keys from EFGS DB: %+v", key)
+		}
+	}
+
 	return keys, nil
 }
 
 //RemoveDiagnosisKeys Remove array of DiagnosisKeyWrapper from the DB.
 func (db Connection) RemoveDiagnosisKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
+	logger := db.logger.Named("RemoveDiagnosisKeys")
 	connection := db.inner().Conn()
 	defer connection.Close()
 
+	if efgsutils.EfgsExtendedLogging {
+		for _, key := range keys {
+			logger.Debugf("Going to remove keys from EFGS DB: %+v", key)
+		}
+	}
 	_, err := connection.Model(&keys).WherePK().Delete()
 	if err != nil {
 		return err
@@ -139,9 +163,15 @@ func (db Connection) RemoveDiagnosisKeys(keys []*efgsapi.DiagnosisKeyWrapper) er
 
 //UpdateKeys Updates key records in the DB.
 func (db Connection) UpdateKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
+	logger := db.logger.Named("UpdateKeys")
 	connection := db.inner().Conn()
 	defer connection.Close()
 
+	if efgsutils.EfgsExtendedLogging {
+		for _, key := range keys {
+			logger.Debugf("Going to update keys in EFGS DB: %+v", key)
+		}
+	}
 	_, err := connection.Model(&keys).WherePK().Update()
 	if err != nil {
 		return err
@@ -152,8 +182,11 @@ func (db Connection) UpdateKeys(keys []*efgsapi.DiagnosisKeyWrapper) error {
 
 //RemoveInvalidKeys Remove N times refused keys from the DB
 func (db Connection) RemoveInvalidKeys() error {
+	logger := db.logger.Named("RemoveInvalidKeys")
 	connection := db.inner().Conn()
 	defer connection.Close()
+
+	logger.Debug("Removing invalid keys from EFGS DB")
 
 	_, err := connection.Model(new(efgsapi.DiagnosisKeyWrapper)).Where("retries >= 2").Delete()
 	if err != nil {
@@ -165,8 +198,11 @@ func (db Connection) RemoveInvalidKeys() error {
 
 //RemoveOldKeys Removes keys older than date provided as parameter.
 func (db Connection) RemoveOldKeys(dateFrom string) error {
+	logger := db.logger.Named("RemoveOldKeys")
 	connection := db.inner().Conn()
 	defer connection.Close()
+
+	logger.Debug("Removing old keys from EFGS DB")
 
 	_, err := connection.Model(new(efgsapi.DiagnosisKeyWrapper)).Where("created_at < ?", dateFrom).Delete()
 	if err != nil {
