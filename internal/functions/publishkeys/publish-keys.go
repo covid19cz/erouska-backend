@@ -156,10 +156,6 @@ func persistKeysForEfgs(ctx context.Context, config *config, request v1.PublishK
 		keys = append(keys, diagnosisKey)
 	}
 
-	if efgsutils.EfgsExtendedLogging {
-		logger.Debugf("Saving keys into DB: %+v", keys)
-	}
-
 	return config.efgsdatabase.PersistDiagnosisKeys(keys)
 }
 
