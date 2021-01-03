@@ -102,7 +102,8 @@ locals {
 
   sendwakeupsignal_roles = [
     "roles/cloudfunctions.serviceAgent",
-    "roles/firebasenotifications.admin"
+    "roles/firebasenotifications.admin",
+    "roles/firebase.growthAdmin"
   ]
 
   # SendWakeUpSignal - invoker
