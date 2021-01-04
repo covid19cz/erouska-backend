@@ -13,6 +13,7 @@ service_environment = {
     CERTIFICATE_ISSUER     = "cz.covid19cz.erouska"
     CERTIFICATE_AUDIENCE   = "covid19cz"
     OBSERVABILITY_EXPORTER = "NOOP"
+    RATE_LIMIT_TOKENS      = "150"
   }
   server = {
     FIREBASE_PRIVACY_POLICY_URL   = "TODO"
