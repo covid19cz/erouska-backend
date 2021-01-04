@@ -60,7 +60,7 @@ module "en" {
 
 module "cdn" {
 
-  source  = "../../modules/cdn"
+  source  = "../../modules/cdn-bucket"
   project = var.project
   region  = var.region
 
