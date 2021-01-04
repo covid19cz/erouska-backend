@@ -192,7 +192,7 @@ steps:
       - --runtime=go113
       - --memory=128
       - --timeout=540s
-      - --vpc-connector=projects/erouska-key-server-dev/locations/europe-west1/connectors/serverless-vpc-connector
+      - --vpc-connector=${_VPC_CONNECTOR}
       - --egress-settings=private-ranges-only
       - --service-account=efgs-download-keys@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-env-vars=PROJECT_ID=${PROJECT_ID}
