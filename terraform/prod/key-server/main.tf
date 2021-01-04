@@ -41,7 +41,9 @@ module "en" {
       OBSERVABILITY_EXPORTER = "NOOP"
     }
     exposure = {
-      OBSERVABILITY_EXPORTER = "NOOP"
+      OBSERVABILITY_EXPORTER       = "NOOP"
+      MAX_KEYS_ON_PUBLISH          = 50
+      MAX_SAME_START_INTERVAL_KEYS = 15
     }
     export = {
       OBSERVABILITY_EXPORTER = "NOOP"
