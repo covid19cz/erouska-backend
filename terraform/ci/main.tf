@@ -11,7 +11,7 @@ provider "google" {
 }
 
 module "atlantis" {
-  source = "git::https://github.com/pipetail/terraform-atlantis-gce.git?ref=v0.3.2"
+  source = "git::https://github.com/pipetail/terraform-atlantis-gce.git?ref=v0.3.3"
 
   region  = var.region
   project = var.project
