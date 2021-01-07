@@ -107,6 +107,8 @@ resource "google_project_iam_member" "efgsuploadkeys-invoker" {
 }
 
 resource "google_cloud_scheduler_job" "efgsuploadkeys-worker" {
+  count = (data.google_cloudfunctions_function.efgsuploadkeys.https_trigger_url != null) ? 1 : 0
+
   name             = "efgsuploadkeys-worker"
   region           = var.cloudscheduler_location
   schedule         = "*/15 * * * *"
@@ -163,6 +165,8 @@ resource "google_project_iam_member" "efgsdownkeys-invoker" {
 }
 
 resource "google_cloud_scheduler_job" "efgsdownkeys-worker" {
+  count = (data.google_cloudfunctions_function.efgsdownkeys.https_trigger_url != null) ? 1 : 0
+
   name             = "efgsdownkeys-worker"
   region           = var.cloudscheduler_location
   schedule         = "*/15 * * * *"
@@ -219,6 +223,8 @@ resource "google_project_iam_member" "efgsdownyestkeys-invoker" {
 }
 
 resource "google_cloud_scheduler_job" "efgsdownyestkeys-worker" {
+  count = (data.google_cloudfunctions_function.efgsdownyestkeys.https_trigger_url != null) ? 1 : 0
+
   name             = "efgsdownyestkeys-worker"
   region           = var.cloudscheduler_location
   schedule         = "0 5 * * *"
@@ -293,6 +299,8 @@ resource "google_project_iam_member" "efgsremoveoldkeys-invoker" {
 }
 
 resource "google_cloud_scheduler_job" "efgsremoveoldkeys-worker" {
+  count = (data.google_cloudfunctions_function.efgsremoveoldkeys.https_trigger_url != null) ? 1 : 0
+
   name             = "efgsremoveoldkeys-worker"
   region           = var.cloudscheduler_location
   schedule         = "0 6 * * *"
