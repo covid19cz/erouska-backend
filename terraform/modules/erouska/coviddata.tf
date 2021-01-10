@@ -376,27 +376,27 @@ resource "google_project_iam_member" "sendwakeupsignal-invoker" {
   member = "serviceAccount:${google_service_account.sendwakeupsignal-invoker.email}"
 }
 
-//resource "google_cloud_scheduler_job" "sendwakeupsignal-worker" {
-//  name             = "sendwakeupsignal-worker"
-//  region           = var.cloudscheduler_location
-//  schedule         = "0 */4 * * *"
-//  time_zone        = "Europe/Prague"
-//  attempt_deadline = "600s"
-//
-//  retry_config {
-//    retry_count = 1
-//  }
-//
-//  http_target {
-//    http_method = "GET"
-//    uri         = data.google_cloudfunctions_function.sendwakeupsignal.https_trigger_url
-//    oidc_token {
-//      audience              = data.google_cloudfunctions_function.sendwakeupsignal.https_trigger_url
-//      service_account_email = google_service_account.sendwakeupsignal-invoker.email
-//    }
-//  }
-//
-//  depends_on = [
-//    google_project_service.services["cloudscheduler.googleapis.com"],
-//  ]
-//}
+resource "google_cloud_scheduler_job" "sendwakeupsignal-worker" {
+  name             = "sendwakeupsignal-worker"
+  region           = var.cloudscheduler_location
+  schedule         = "0 9 * * *"
+  time_zone        = "Europe/Prague"
+  attempt_deadline = "600s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "GET"
+    uri         = data.google_cloudfunctions_function.sendwakeupsignal.https_trigger_url
+    oidc_token {
+      audience              = data.google_cloudfunctions_function.sendwakeupsignal.https_trigger_url
+      service_account_email = google_service_account.sendwakeupsignal-invoker.email
+    }
+  }
+
+  depends_on = [
+    google_project_service.services["cloudscheduler.googleapis.com"],
+  ]
+}

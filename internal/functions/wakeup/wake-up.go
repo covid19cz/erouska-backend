@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/covid19cz/erouska-backend/internal/logging"
 	"github.com/covid19cz/erouska-backend/internal/messaging"
-	"github.com/covid19cz/erouska-backend/internal/secrets"
 	"net/http"
 	"time"
 )
@@ -16,40 +15,18 @@ const topicName = "budicek"
 //SendWakeUpSignal Sends wake-up signal to devices
 func SendWakeUpSignal(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	logger := logging.FromContext(ctx).Named("wake-up.SendWakeUpSignal")
 
-	secretClient := secrets.Client{}
 	pushSender := messaging.Client{}
-
-	httpStatus, httpBody := sendWakeUpSignalAuthenticated(ctx, r, secretClient, pushSender)
-
-	http.Error(w, httpBody, httpStatus)
-}
-
-func sendWakeUpSignalAuthenticated(ctx context.Context, r *http.Request, secretClient secrets.Client, pushSender messaging.Client) (int, string) {
-	logger := logging.FromContext(ctx).Named("wake-up.sendWakeUpSignalAuthenticated")
-
-	// authentication
-
-	apikey, err := secretClient.Get("manual-wakeup-apikey")
-	if err != nil {
-		logger.Warnf("Could not obtain api key: %v", err)
-		return 500, "Could not obtain api key"
-	}
-
-	providedAPIKeys := r.URL.Query()["apikey"]
-	if len(providedAPIKeys) != 1 || providedAPIKeys[0] != string(apikey) {
-		return 401, "Bad api key"
-	}
-
-	// authenticated, go ahead
 
 	if err := sendWakeUpSignal(ctx, pushSender); err != nil {
 		msg := fmt.Sprintf("Could not send wake-up signal: %v", err)
 		logger.Error(msg)
-		return 500, msg
+		http.Error(w, msg, 500)
+		return
 	}
 
-	return 200, "ok"
+	http.Error(w, "ok", 200)
 }
 
 func sendWakeUpSignal(ctx context.Context, msgClient messaging.PushSender) error {
