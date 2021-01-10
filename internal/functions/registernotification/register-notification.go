@@ -3,10 +3,14 @@ package registernotification
 import (
 	"cloud.google.com/go/firestore"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"google.golang.org/api/iterator"
 	"net/http"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/covid19cz/erouska-backend/internal/auth"
 	"github.com/covid19cz/erouska-backend/internal/constants"
@@ -43,6 +47,14 @@ func RegisterNotification(w http.ResponseWriter, r *http.Request) {
 	uid, err := authClient.AuthenticateToken(ctx, request.IDToken)
 	if err != nil {
 		logger.Debugf("Unverifiable token provided: %+v %+v", request.IDToken, err.Error())
+
+		if strings.Contains(err.Error(), "ID token has expired") {
+			expSince := parseExpirationTime(request.IDToken)
+			now := time.Now().Unix()
+
+			logger.Debugf("ID token is expired for %v s (since %v, now %v), request headers %+v", now-expSince, expSince, now, r.Header)
+		}
+
 		httputils.SendErrorResponse(w, r, &errors.UnauthenticatedError{Msg: "Invalid token"})
 		return
 	}
@@ -136,4 +148,29 @@ func handleForFUID(ctx context.Context, fuid string) error {
 	logger.Debugf("Record for FUID %+v found", fuid)
 
 	return nil
+}
+
+func parseExpirationTime(idToken string) int64 {
+	token, _ := jwt.Parse(idToken, func(token *jwt.Token) (interface{}, error) {
+		return []byte("hello-world"), nil
+	})
+
+	// We certainly got validation error but we don't care. It's just about whether we are able to parse the token or not.
+
+	if token == nil || token.Claims == nil {
+		return 0
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+
+	switch exp := claims["exp"].(type) {
+	case float64:
+		return int64(exp)
+	case json.Number:
+		v, _ := exp.Int64()
+		return v
+	default:
+		logging.FromContext(context.Background()).Named("register-notification.parseExpirationTime").Warnf("Unknown type of exp claim: %+v", claims)
+		return 0
+	}
 }
