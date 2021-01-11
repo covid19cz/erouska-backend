@@ -3,7 +3,7 @@ package coviddata
 import (
 	"context"
 	"encoding/json"
-	"github.com/covid19cz/erouska-backend/internal/firebase/structs"
+	"github.com/sethvargo/go-envconfig"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -43,24 +43,13 @@ type TotalsData struct {
 	PCRTestsIncreaseDate       string `json:"provedene_testy_vcerejsi_den_datum" validate:"required"`
 }
 
-// TotalsDataFields are wrapped TotalsData from firestore response
-type TotalsDataFields struct {
-	Date                       structs.StringValue  `json:"date" validate:"required"`
-	TestsTotal                 structs.IntegerValue `json:"testsTotal"  validate:"required"`
-	ConfirmedCasesTotal        structs.IntegerValue `json:"confirmedCasesTotal"  validate:"required"`
-	ActiveCasesTotal           structs.IntegerValue `json:"activeCasesTotal"  validate:"required"`
-	CuredTotal                 structs.IntegerValue `json:"curedTotal"  validate:"required"`
-	DeceasedTotal              structs.IntegerValue `json:"deceasedTotal"  validate:"required"`
-	CurrentlyHospitalizedTotal structs.IntegerValue `json:"currentlyHospitalizedTotal"  validate:"required"`
-	TestsIncrease              structs.IntegerValue `json:"testsIncrease" validate:"required"`
-	ConfirmedCasesIncrease     structs.IntegerValue `json:"confirmedCasesIncrease" validate:"required"`
-	TestsIncreaseDate          structs.StringValue  `json:"provedene_testy_vcerejsi_den_datum" validate:"required"`
-	ConfirmedCasesIncreaseDate structs.StringValue  `json:"potvrzene_pripady_vcerejsi_den_datum" validate:"required"`
-}
-
 // HTTPClient interface for mocking fetchData
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
+}
+
+type covidMetricsConfig struct {
+	URL string `env:"UZIS_METRICS_URL, required"`
 }
 
 func fetchData(client HTTPClient) (*TotalsData, error) {
@@ -68,10 +57,13 @@ func fetchData(client HTTPClient) (*TotalsData, error) {
 	var ctx = context.Background()
 	logger := logging.FromContext(ctx)
 
-	// TODO: make this configurable
-	url := "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/zakladni-prehled.json"
+	var covidMetricsConfig covidMetricsConfig
+	if err := envconfig.Process(ctx, &covidMetricsConfig); err != nil {
+		logger.Debugf("Could not load covidMetricsConfig: %v", err)
+		return nil, err
+	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, covidMetricsConfig.URL, nil)
 	if err != nil {
 		return nil, err
 	}

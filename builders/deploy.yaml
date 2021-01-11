@@ -96,7 +96,7 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=download-covid-data-total@${PROJECT_ID}.iam.gserviceaccount.com
-      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},UZIS_METRICS_URL=${_UZIS_METRICS_URL}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:
