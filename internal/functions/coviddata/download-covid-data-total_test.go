@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -46,6 +47,10 @@ func (c *ClientMock) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestFetchData(t *testing.T) {
+
+	if err := os.Setenv("UZIS_METRICS_URL", ""); err != nil {
+		return
+	}
 
 	client := &ClientMock{}
 
