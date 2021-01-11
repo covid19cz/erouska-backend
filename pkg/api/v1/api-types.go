@@ -68,6 +68,12 @@ type GetCovidDataResponse struct {
 	CurrentlyHospitalizedTotal    int    `json:"currentlyHospitalizedTotal"  validate:"required"`
 	TestsIncreaseDate             string `json:"testsIncreaseDate" validate:"required"`
 	ConfirmedCasesIncreaseDate    string `json:"confirmedCasesIncreaseDate" validate:"required"`
+	AntigenTestsTotal             int    `json:"antigenTestsTotal" validate:"required"`
+	AntigenTestsIncrease          int    `json:"antigenTestsIncrease"  validate:"required"`
+	AntigenTestsDate              string `json:"antigenTestsDate" validate:"required"`
+	PCRTestsTotal                 int    `json:"pcrTestsTotal"  validate:"required"`
+	PCRTestsIncrease              int    `json:"pcrTestsIncrease"  validate:"required"`
+	PCRTestsIncreaseDate          string `json:"pcrTestsIncreaseDate" validate:"required"`
 }
 
 //DownloadMetricsRequest Request for DownloadMetrics function

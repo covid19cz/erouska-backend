@@ -102,18 +102,41 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// backward compatibility (when the date where PCR tests attributes are not defined is queried)
+	testsTotal := totalsData.PCRTestsTotal
+	testsIncrease := totalsData.PCRTestsIncrease
+	testsIncreaseDate := totalsData.PCRTestsIncreaseDate
+
+	if testsTotal == 0 {
+		testsTotal = totalsData.TestsTotal
+	}
+
+	if testsIncrease == 0 {
+		testsIncrease = totalsData.TestsIncrease
+	}
+
+	if testsIncreaseDate == "" {
+		testsIncreaseDate = totalsData.TestsIncreaseDate
+	}
+
 	res := v1.GetCovidDataResponse{
 		Date:                       date,
-		TestsIncrease:              totalsData.TestsIncrease,
-		TestsTotal:                 totalsData.TestsTotal,
+		TestsIncrease:              testsIncrease, // this value is duplicated for backward compatibility
+		TestsTotal:                 testsTotal,    // this value is duplicated for backward compatibility
 		ConfirmedCasesIncrease:     totalsData.ConfirmedCasesIncrease,
 		ConfirmedCasesTotal:        totalsData.ConfirmedCasesTotal,
 		ActiveCasesTotal:           totalsData.ActiveCasesTotal,
 		CuredTotal:                 totalsData.CuredTotal,
 		DeceasedTotal:              totalsData.DeceasedTotal,
 		CurrentlyHospitalizedTotal: totalsData.CurrentlyHospitalizedTotal,
-		TestsIncreaseDate:          totalsData.TestsIncreaseDate,
+		TestsIncreaseDate:          testsIncreaseDate, // this value is duplicated for backward compatibility
 		ConfirmedCasesIncreaseDate: totalsData.ConfirmedCasesIncreaseDate,
+		AntigenTestsTotal:          totalsData.AntigenTestsTotal,
+		AntigenTestsIncrease:       totalsData.AntigenTestsIncrease,
+		AntigenTestsDate:           totalsData.AntigenTestsDate,
+		PCRTestsTotal:              testsTotal,
+		PCRTestsIncrease:           testsIncrease,
+		PCRTestsIncreaseDate:       testsIncreaseDate,
 	}
 
 	httputils.SendResponse(w, r, res)
