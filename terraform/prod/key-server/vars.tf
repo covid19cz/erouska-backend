@@ -218,3 +218,8 @@ terraform {
     }
   }
 }
+
+variable "pgadmin_domains" {
+  type        = list(string)
+  description = "domain names for pgadmin"
+}

@@ -232,3 +232,8 @@ variable "extra-hosts" {
   description = "Extra hosts to probe and monitor."
 }
 
+variable "pgadmin_domains" {
+  type        = list(string)
+  description = "domain names for pgadmin"
+}
+
