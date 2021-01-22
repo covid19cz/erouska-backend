@@ -121,19 +121,19 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 
 	res := v1.GetCovidDataResponse{
 		Date:                       date,
-		TestsIncrease:              testsIncrease, // this value is duplicated for backward compatibility
-		TestsTotal:                 testsTotal,    // this value is duplicated for backward compatibility
-		ConfirmedCasesIncrease:     totalsData.ConfirmedCasesIncrease,
-		ConfirmedCasesTotal:        totalsData.ConfirmedCasesTotal,
 		ActiveCasesTotal:           totalsData.ActiveCasesTotal,
 		CuredTotal:                 totalsData.CuredTotal,
 		DeceasedTotal:              totalsData.DeceasedTotal,
 		CurrentlyHospitalizedTotal: totalsData.CurrentlyHospitalizedTotal,
+		TestsTotal:                 testsTotal,        // this value is duplicated for backward compatibility
+		TestsIncrease:              testsIncrease,     // this value is duplicated for backward compatibility
 		TestsIncreaseDate:          testsIncreaseDate, // this value is duplicated for backward compatibility
+		ConfirmedCasesTotal:        totalsData.ConfirmedCasesTotal,
+		ConfirmedCasesIncrease:     totalsData.ConfirmedCasesIncrease,
 		ConfirmedCasesIncreaseDate: totalsData.ConfirmedCasesIncreaseDate,
 		AntigenTestsTotal:          totalsData.AntigenTestsTotal,
 		AntigenTestsIncrease:       totalsData.AntigenTestsIncrease,
-		AntigenTestsDate:           totalsData.AntigenTestsDate,
+		AntigenTestsIncreaseDate:   totalsData.AntigenTestsIncreaseDate,
 		PCRTestsTotal:              testsTotal,
 		PCRTestsIncrease:           testsIncrease,
 		PCRTestsIncreaseDate:       testsIncreaseDate,
