@@ -72,7 +72,7 @@ func TestFetchData(t *testing.T) {
 				PCRTestsIncreaseDate:       "20210110",
 				AntigenTestsTotal:          1037613,
 				AntigenTestsIncrease:       9743,
-				AntigenTestsDate:           "20210110",
+				AntigenTestsIncreaseDate:   "20210110",
 			},
 		},
 	}
