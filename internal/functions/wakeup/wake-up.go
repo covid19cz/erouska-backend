@@ -40,7 +40,7 @@ func sendWakeUpSignal(ctx context.Context, msgClient messaging.PushSender) error
 		},
 		Topic: topicName,
 		Android: &fbmessaging.AndroidConfig{
-			Priority: "high",
+			Priority: "normal",
 			TTL:      &ttl,
 		},
 	}
