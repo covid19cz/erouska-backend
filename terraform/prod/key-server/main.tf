@@ -87,6 +87,12 @@ provider "google-beta" {
   region  = var.region
 }
 
+module "pgadmin" {
+  source  = "../../modules/pgadmin"
+  zone    = "${var.region}-b"
+  domains = var.pgadmin_domains
+}
+
 output "en" {
   value = module.en
 }

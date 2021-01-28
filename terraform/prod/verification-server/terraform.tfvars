@@ -38,3 +38,5 @@ service_environment = {
 }
 notification-email = "marek.bartik@pipetail.io"
 project            = "cosmic-bonus-287409"
+pgadmin_domains    = ["pgadmin.verification.prod.evec.cz"]
+
