@@ -209,12 +209,30 @@ steps:
       - --trigger-http
       - --region=europe-west1
       - --runtime=go113
-      - --memory=256
+      - --memory=2048
       - --timeout=540s
       - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-env-vars=PROJECT_ID=${PROJECT_ID}
       - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
       - --set-env-vars=MAX_INTERVAL_AGE_ON_PUBLISH=${_MAX_INTERVAL_AGE_ON_PUBLISH},MAX_KEYS_ON_PUBLISH=${_MAX_KEYS_ON_PUBLISH},MAX_SAME_START_INTERVAL_KEYS=${_MAX_SAME_START_INTERVAL_KEYS}
+      - --set-env-vars=MAX_YESTERDAYS_KEYS_PART_SIZE=${_MAX_YESTERDAYS_KEYS_PART_SIZE}
+  - name: "gcr.io/cloud-builders/gcloud"
+    waitFor: ["-"]
+    args:
+      - functions
+      - deploy
+      - EfgsDownloadYesterdaysKeysPostponed
+      - --source=.
+      - --trigger-topic=efgs-postponed-yesterdays-downloading
+      - --region=europe-west1
+      - --runtime=go113
+      - --memory=2048
+      - --timeout=540s
+      - --service-account=efgs-download-yesterdays-keys@${PROJECT_ID}.iam.gserviceaccount.com
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID}
+      - --set-env-vars=EFGS_ENV=${_EFGS_ENV},EFGS_EXTENDED_LOGGING=${_EFGS_EXTENDED_LOGGING}
+      - --set-env-vars=MAX_INTERVAL_AGE_ON_PUBLISH=${_MAX_INTERVAL_AGE_ON_PUBLISH},MAX_KEYS_ON_PUBLISH=${_MAX_KEYS_ON_PUBLISH},MAX_SAME_START_INTERVAL_KEYS=${_MAX_SAME_START_INTERVAL_KEYS}
+      - --set-env-vars=MAX_YESTERDAYS_KEYS_PART_SIZE=${_MAX_YESTERDAYS_KEYS_PART_SIZE}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:
