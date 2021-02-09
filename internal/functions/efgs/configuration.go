@@ -41,18 +41,19 @@ type publishConfig struct {
 }
 
 type downloadConfig struct {
-	Env                      efgsutils.Environment
-	Client                   *http.Client
-	URL                      *urlutils.URL
-	NBTLSPair                *efgsutils.X509KeyPair
-	HaidMappings             map[string]string
-	PubSubClient             pubsub.EventPublisher
-	RedisClient              redis.Client
-	MutexManager             redismutex.MutexManager
-	RealtimeDBClient         *realtimedb.Client
-	MaxKeysOnPublish         int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
-	MaxIntervalAge           int `env:"MAX_INTERVAL_AGE_ON_PUBLISH,default=15"`
-	MaxSameStartIntervalKeys int `env:"MAX_SAME_START_INTERVAL_KEYS,default=15"`
+	Env                               efgsutils.Environment
+	Client                            *http.Client
+	URL                               *urlutils.URL
+	NBTLSPair                         *efgsutils.X509KeyPair
+	HaidMappings                      map[string]string
+	PubSubClient                      pubsub.EventPublisher
+	RedisClient                       redis.Client
+	MutexManager                      redismutex.MutexManager
+	RealtimeDBClient                  *realtimedb.Client
+	MaxKeysOnPublish                  int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
+	MaxIntervalAge                    int `env:"MAX_INTERVAL_AGE_ON_PUBLISH,default=15"`
+	MaxSameStartIntervalKeys          int `env:"MAX_SAME_START_INTERVAL_KEYS,default=15"`
+	MaxDownloadYesterdaysKeysPartSize int `env:"MAX_YESTERDAYS_KEYS_PART_SIZE"`
 }
 
 func loadUploadConfig(ctx context.Context) (*uploadConfig, error) {

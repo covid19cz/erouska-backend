@@ -11,6 +11,7 @@ import (
 	efgsconstants "github.com/covid19cz/erouska-backend/internal/functions/efgs/constants"
 	efgsutils "github.com/covid19cz/erouska-backend/internal/functions/efgs/utils"
 	"github.com/covid19cz/erouska-backend/internal/logging"
+	"github.com/covid19cz/erouska-backend/internal/pubsub"
 	"github.com/covid19cz/erouska-backend/internal/realtimedb"
 	redisclient "github.com/go-redis/redis/v8"
 	keyserverapi "github.com/google/exposure-notifications-server/pkg/api/v1"
@@ -64,6 +65,39 @@ func DownloadAndSaveYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("Could not download all data: %+v", err)
 		http.Error(w, fmt.Sprintf("Error: %v", err), 500)
 	}
+}
+
+//DownloadAndSaveYesterdaysKeysPostponed Continue in downloading yesterdays key, according to received batch params.
+func DownloadAndSaveYesterdaysKeysPostponed(ctx context.Context, m pubsub.Message) error {
+	logger := logging.FromContext(ctx).Named("efgs.DownloadAndSaveYesterdaysKeysPostponed")
+
+	now := time.Now()
+	yesterday := now.Add(time.Hour * -24)
+
+	config, err := loadDownloadConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	var startBatchParams efgsapi.BatchDownloadParams
+
+	if decodeErr := pubsub.DecodeJSONEvent(m, &startBatchParams); decodeErr != nil {
+		err := fmt.Errorf("Error while parsing event payload: %v", decodeErr)
+		logger.Error(err)
+		return err
+	}
+
+	if err = downloadAllRecursively(ctx, config, yesterday, startBatchParams); err != nil {
+		logger.Errorf("Could not process: %+v", err)
+
+		if err2 := postponeRest(ctx, config, startBatchParams); err2 != nil {
+			logger.Errorf("Could not requeue postponed batch for processing: %v", err)
+		}
+
+		return err
+	}
+
+	return err
 }
 
 func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.Time) error {
@@ -146,17 +180,18 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.T
 	return nil
 }
 
-func downloadAllRecursively(ctx context.Context, config *downloadConfig, now time.Time, params efgsapi.BatchDownloadParams) error {
+func downloadAllRecursively(ctx context.Context, config *downloadConfig, now time.Time, nextBatch efgsapi.BatchDownloadParams) error {
 	logger := logging.FromContext(ctx).Named("efgs.downloadAllRecursively")
 
 	var keys []efgsapi.DiagnosisKey
+	var batchToPostpone *efgsapi.BatchDownloadParams
 
 	moreKeysAvailable := true
 
-	// Download all available keys, starting with batch in `params`
+	// Download all available keys, starting with batch in `nextBatch`
 
 	for moreKeysAvailable {
-		moreKeys, err := downloadKeys(ctx, config, params.Date, params.BatchTag)
+		moreKeys, err := downloadKeys(ctx, config, nextBatch.Date, nextBatch.BatchTag)
 		if err != nil {
 			return err
 		}
@@ -166,9 +201,19 @@ func downloadAllRecursively(ctx context.Context, config *downloadConfig, now tim
 		// This ends once
 		if moreKeysAvailable {
 			keys = append(keys, moreKeys...)
-			params = nextBatchParams(ctx, now, params)
+			nextBatch = nextBatchParams(ctx, now, nextBatch)
 		} else {
-			logger.Infof("Batch %v doesn't exist, stopping", params.BatchTag)
+			logger.Infof("Batch %v doesn't exist, stopping", nextBatch.BatchTag)
+			break
+		}
+
+		if len(keys) >= config.MaxDownloadYesterdaysKeysPartSize {
+			// There's too much of keys; let's process only part and prevent timeout.
+			logger.Infof("There's too much of keys, about to postpone processing of the rest")
+			batchToPostpone = &nextBatch
+
+			// now break the downloading and enqueue what we've got so far
+			break
 		}
 	}
 
@@ -188,6 +233,13 @@ func downloadAllRecursively(ctx context.Context, config *downloadConfig, now tim
 
 		if err := updateDownloadedCounters(ctx, config, now, keysCount); err != nil {
 			logger.Warnf("Could not update EFGS download counters: %v", err)
+		}
+	}
+
+	if batchToPostpone != nil {
+		if err := postponeRest(ctx, config, *batchToPostpone); err != nil {
+			logger.Warnf("Could not postpone processing of the rest: %v", err)
+			return err
 		}
 	}
 
@@ -399,13 +451,26 @@ func loadBatchParams(config *downloadConfig) (*efgsapi.BatchDownloadParams, erro
 	return &savedBatchParams, nil
 }
 
+func postponeRest(ctx context.Context, config *downloadConfig, nextBatch efgsapi.BatchDownloadParams) error {
+	logger := logging.FromContext(ctx).Named("efgs.postponeRest")
+
+	logger.Infof("Next batch will be: %+v", nextBatch)
+
+	if err := config.PubSubClient.Publish(efgsconstants.TopicNameContinueYesterdayDownloading, nextBatch); err != nil {
+		logger.Errorf("Could not notify about postponing: %+v", err)
+		return err
+	}
+
+	return nil
+}
+
 func updateDownloadedCounters(ctx context.Context, config *downloadConfig, now time.Time, keysCount int) error {
 	logger := logging.FromContext(ctx).Named("efgs.download-batch.updateDownloadedCounters")
 
 	var date = now.Format("20060102")
 
 	// update daily counter
-	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+date, func(c int) int { return keysCount }); err != nil {
+	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+date, func(c int) int { return c + keysCount }); err != nil {
 		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
 		return err
 	}

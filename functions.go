@@ -94,6 +94,11 @@ func EfgsDownloadYesterdaysKeys(w http.ResponseWriter, r *http.Request) {
 	efgs.DownloadAndSaveYesterdaysKeys(w, r)
 }
 
+// EfgsDownloadYesterdaysKeysPostponed Continues in downloading yesterdays key
+func EfgsDownloadYesterdaysKeysPostponed(ctx context.Context, m pubsub.Message) error {
+	return efgs.DownloadAndSaveYesterdaysKeysPostponed(ctx, m)
+}
+
 //EfgsImportKeys Imports given keys
 func EfgsImportKeys(ctx context.Context, m pubsub.Message) error {
 	return efgs.ImportKeysToKeyServer(ctx, m)
