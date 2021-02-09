@@ -190,7 +190,7 @@ steps:
       - --trigger-http
       - --region=europe-west1
       - --runtime=go113
-      - --memory=128
+      - --memory=1024
       - --timeout=540s
       - --vpc-connector=${_VPC_CONNECTOR}
       - --egress-settings=private-ranges-only
