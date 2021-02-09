@@ -90,9 +90,8 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.T
 	}
 
 	if loadedBatchParams != nil {
-		logger.Debugf("Batch params found: %v", batchParams)
-
 		if loadedBatchParams.Date == batchParams.Date {
+			logger.Debugf("Batch params found: %v", batchParams)
 			batchParams = *loadedBatchParams
 		} else {
 			logger.Debugf("Found batch params from another day, discarding and using the default: %v", batchParams)
@@ -109,7 +108,13 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.T
 		return err
 	}
 
-	// Enqueue downloaded keys:
+	if keys == nil {
+		logger.Debugf("Batch %v doesn't exist yet", batchParams.BatchTag)
+		return nil
+	}
+
+	// The batch was found, yet it still may be empty.
+	// Enqueue downloaded keys, if any:
 
 	keysCount := len(keys)
 
@@ -122,23 +127,23 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.T
 		}
 
 		logger.Infof("Successfully enqueued %v downloaded keys for import to our Key server", keysCount)
-
-		// Save params for next run:
-
-		nextBatch := nextBatchParams(ctx, now, batchParams)
-		logger.Debugf("Next batch will be: %+v", nextBatch)
-		bytes, err := json.Marshal(nextBatch)
-		if err != nil {
-			return err
-		}
-
-		if err = config.RedisClient.Set(efgsconstants.RedisKeyNextBatch, string(bytes), 0); err != nil {
-			logger.Errorf("Could not save next batch params to Redis: %+v", err)
-			return err
-		}
 	}
 
-	return err
+	// Save params for next run:
+
+	nextBatch := nextBatchParams(ctx, now, batchParams)
+	logger.Debugf("Next batch will be: %+v", nextBatch)
+	bytes, err := json.Marshal(nextBatch)
+	if err != nil {
+		return err
+	}
+
+	if err = config.RedisClient.Set(efgsconstants.RedisKeyNextBatch, string(bytes), 0); err != nil {
+		logger.Errorf("Could not save next batch params to Redis: %+v", err)
+		return err
+	}
+
+	return nil
 }
 
 func downloadAllRecursively(ctx context.Context, config *downloadConfig, now time.Time, params efgsapi.BatchDownloadParams) error {
@@ -367,7 +372,7 @@ func downloadKeys(ctx context.Context, config *downloadConfig, date string, batc
 	}
 
 	if batchResponse.Keys == nil {
-		logger.Debugf("No keys returned from EFGS for date %v and batchTag '%v'", date, batchTag)
+		logger.Debugf("No keys returned from EFGS for date %v and batchTag '%v', it's probably our own batch", date, batchTag)
 		batchResponse.Keys = []efgsapi.DiagnosisKey{}
 	}
 
