@@ -42,13 +42,26 @@ func ImportKeysToKeyServer(ctx context.Context, m pubsub.Message) error {
 		return err
 	}
 
-	return importKeysToKeyServer(ctx, config, payload.HAID, payload.Keys)
+	return importKeysToKeyServer(ctx, config, time.Now(), payload.HAID, payload.Keys)
 }
 
-func importKeysToKeyServer(ctx context.Context, config *publishConfig, haid string, keys []efgsapi.ExpKey) error {
+func importKeysToKeyServer(ctx context.Context, config *publishConfig, now time.Time, haid string, keys []efgsapi.ExpKey) error {
 	logger := logging.FromContext(ctx).Named("efgs.importKeysToKeyServer")
 
-	keysCount := len(keys)
+	// Filter out too old keys. That was once done before, but there may be some more invalid due to
+	// delay between the filtering and real importing the keys (getting here).
+
+	var filteredKeys []efgsapi.ExpKey
+
+	timeWithTolerance := now.Add(5 * time.Minute) // let's pretend it's 5 minutes more for the comparison of validity
+
+	for _, key := range keys {
+		if isRecent(uint32(key.IntervalNumber), uint32(key.IntervalCount), timeWithTolerance, config.MaxIntervalAge) {
+			filteredKeys = append(filteredKeys, key)
+		}
+	}
+
+	keysCount := len(filteredKeys)
 
 	// Sanity check
 	if keysCount > config.MaxKeysOnPublish {
@@ -59,7 +72,7 @@ func importKeysToKeyServer(ctx context.Context, config *publishConfig, haid stri
 
 	logger.Debugf("Going to import batch of %v keys with HAID %v", keysCount, haid)
 
-	resp, err := signAndPublishKeys(ctx, config, haid, keys)
+	resp, err := signAndPublishKeys(ctx, config, haid, filteredKeys)
 	if err != nil {
 		logger.Errorf("Error when publishing keys: %v", err)
 		return err

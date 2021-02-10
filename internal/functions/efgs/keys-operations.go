@@ -163,9 +163,9 @@ func signBatch(ctx context.Context, efgsEnv efgsutils.Environment, diagnosisKey 
 	return b64.StdEncoding.EncodeToString(detachedSignature), nil
 }
 
-func isRecent(k *efgsapi.DiagnosisKey, now time.Time, maxAge int) bool {
-	age := now.Unix() - int64(k.RollingStartIntervalNumber*600)
-	return age <= int64(maxAge)*24*int64(time.Hour.Seconds())
+func isRecent(interval uint32, period uint32, now time.Time, maxAgeDays int) bool {
+	minInterval := uint32(now.AddDate(0, 0, -maxAgeDays).Unix() / 600)
+	return interval+period > minInterval
 }
 
 func splitKeys(keys []efgsapi.ExpKey, batchSize int, maxOverlapping int) (batches []efgsapi.ExpKeyBatch) {

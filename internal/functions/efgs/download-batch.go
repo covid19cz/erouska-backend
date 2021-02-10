@@ -286,7 +286,7 @@ func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsap
 
 	for _, key := range keys {
 		// filter out keys that are too old
-		if !isRecent(&key, now, config.MaxIntervalAge) {
+		if !isRecent(key.RollingStartIntervalNumber, key.RollingPeriod, now, config.MaxIntervalAge) {
 			skippedKeys++
 			continue
 		}
