@@ -38,6 +38,7 @@ type publishConfig struct {
 	KeyServer          *utils.KeyServerConfig
 	Client             *http.Client
 	MaxKeysOnPublish   int `env:"MAX_KEYS_ON_PUBLISH,default=30"`
+	MaxIntervalAge     int `env:"MAX_INTERVAL_AGE_ON_PUBLISH,default=15"`
 }
 
 type downloadConfig struct {

@@ -21,33 +21,6 @@ func TestToDiagnosisKey(t *testing.T) {
 		key          *keyserverapi.ExposureKey
 	}
 
-	parsed := func(start string) time.Time {
-		t, err := time.Parse("2.1.2006", start)
-		if err != nil {
-			panic(err)
-		}
-		return t
-	}
-
-	newExpKey := func(start string) *efgsapi.ExpKey {
-		interval := parsed(start).Unix() / 600
-		return &efgsapi.ExpKey{Key: "YQ==", IntervalNumber: int32(interval), IntervalCount: 144, TransmissionRisk: 2}
-	}
-
-	newDiagKey := func(start string, dsos int32) *efgsapi.DiagnosisKey {
-		interval := parsed(start).Unix() / 600
-		return &efgsapi.DiagnosisKey{
-			KeyData:                    []byte{97},
-			RollingStartIntervalNumber: uint32(interval),
-			RollingPeriod:              144,
-			TransmissionRiskLevel:      2,
-			VisitedCountries:           []string{"DE"},
-			Origin:                     "CZ",
-			ReportType:                 efgsapi.ReportType_CONFIRMED_TEST,
-			DaysSinceOnsetOfSymptoms:   dsos,
-		}
-	}
-
 	tests := []struct {
 		name string
 		args args
@@ -270,6 +243,80 @@ func TestSplitKeys(t *testing.T) {
 	}
 }
 
+func TestIsRecent(t *testing.T) {
+	type args struct {
+		interval   uint32
+		period     uint32
+		now        time.Time
+		maxAgeDays int
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "same day",
+			args: args{
+				interval:   newDiagKey("1.1.2021", 0).RollingStartIntervalNumber,
+				period:     144,
+				now:        parsed("1.1.2021"),
+				maxAgeDays: 14,
+			},
+			want: true,
+		},
+		{
+			name: "week old",
+			args: args{
+				interval:   newDiagKey("1.1.2021", 0).RollingStartIntervalNumber,
+				period:     144,
+				now:        parsed("8.1.2021"),
+				maxAgeDays: 14,
+			},
+			want: true,
+		},
+		{
+			name: "two weeks old",
+			args: args{
+				interval:   newDiagKey("1.1.2021", 0).RollingStartIntervalNumber,
+				period:     144,
+				now:        parsed("15.1.2021"),
+				maxAgeDays: 14,
+			},
+			want: true,
+		},
+		{
+			name: "15 days old",
+			args: args{
+				interval:   newDiagKey("1.1.2021", 0).RollingStartIntervalNumber,
+				period:     144,
+				now:        parsed("16.1.2021"),
+				maxAgeDays: 14,
+			},
+			want: false,
+		},
+		{
+			name: "real-equal",
+			args: args{
+				interval:   2686024,
+				period:     25,
+				now:        time.Unix(1612925622, 0),
+				maxAgeDays: 15,
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isRecent(tt.args.interval, tt.args.period, tt.args.now, tt.args.maxAgeDays); got != tt.want {
+				t.Errorf("isRecent() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func loadTestingKeys(suffix string) (efgsDownloadedKeys []efgsapi.ExpKey) {
 	bytes, err := ioutil.ReadFile(fmt.Sprintf("../../../test/data/efgs-downloaded-keys-%v.json", suffix))
 	if err != nil {
@@ -333,4 +380,31 @@ func checkKeyServerBatch(entities []efgsapi.ExpKey, maxSize int, maxOverlapping 
 	}
 
 	return nil
+}
+
+func newExpKey(start string) *efgsapi.ExpKey {
+	interval := parsed(start).Unix() / 600
+	return &efgsapi.ExpKey{Key: "YQ==", IntervalNumber: int32(interval), IntervalCount: 144, TransmissionRisk: 2}
+}
+
+func newDiagKey(start string, dsos int32) *efgsapi.DiagnosisKey {
+	interval := parsed(start).Unix() / 600
+	return &efgsapi.DiagnosisKey{
+		KeyData:                    []byte{97},
+		RollingStartIntervalNumber: uint32(interval),
+		RollingPeriod:              144,
+		TransmissionRiskLevel:      2,
+		VisitedCountries:           []string{"DE"},
+		Origin:                     "CZ",
+		ReportType:                 efgsapi.ReportType_CONFIRMED_TEST,
+		DaysSinceOnsetOfSymptoms:   dsos,
+	}
+}
+
+func parsed(start string) time.Time {
+	t, err := time.Parse("2.1.2006", start)
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
