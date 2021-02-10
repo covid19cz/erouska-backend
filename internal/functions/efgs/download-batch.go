@@ -319,7 +319,7 @@ func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsap
 
 		batches := splitKeys(countryKeys, config.MaxKeysOnPublish, config.MaxSameStartIntervalKeys)
 
-		logger.Infof("Enqueuing %v batches for import with HAID %v", len(batches), haid)
+		logger.Infof("Enqueuing %v keys from %v for import in %v batches with HAID %v", len(countryKeys), country, len(batches), haid)
 
 		for _, batch := range batches {
 			batchParams := efgsapi.BatchImportParams{
