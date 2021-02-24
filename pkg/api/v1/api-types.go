@@ -70,6 +70,9 @@ type GetCovidDataResponse struct {
 	PCRTestsTotal              int    `json:"pcrTestsTotal"  validate:"required"`
 	PCRTestsIncrease           int    `json:"pcrTestsIncrease"  validate:"required"`
 	PCRTestsIncreaseDate       string `json:"pcrTestsIncreaseDate" validate:"required"`
+	VaccinationsTotal          int    `json:"vaccinationsTotal" validate:"required"`
+	VaccinationsIncrease       int    `json:"vaccinationsIncrease" validate:"required"`
+	VaccinationsIncreaseDate   string `json:"vaccinationsIncreaseDate" validate:"required"`
 }
 
 //DownloadMetricsRequest Request for DownloadMetrics function
