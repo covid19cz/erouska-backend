@@ -35,7 +35,10 @@ func (c *ClientMock) Do(req *http.Request) (*http.Response, error) {
             "potvrzene_pripady_dnesni_den_datum": "2021-01-11",
             "provedene_antigenni_testy_celkem": 1037613,
             "provedene_antigenni_testy_vcerejsi_den": 9743,
-            "provedene_antigenni_testy_vcerejsi_den_datum": "2021-01-10"
+            "provedene_antigenni_testy_vcerejsi_den_datum": "2021-01-10",
+			"vykazana_ockovani_celkem": 581542,
+            "vykazana_ockovani_vcerejsi_den": 16663,
+            "vykazana_ockovani_vcerejsi_den_datum": "2021-01-10"
         }
     ]
 }
@@ -73,6 +76,9 @@ func TestFetchData(t *testing.T) {
 				AntigenTestsTotal:          1037613,
 				AntigenTestsIncrease:       9743,
 				AntigenTestsIncreaseDate:   "20210110",
+				VaccinationsTotal:          581542,
+				VaccinationsIncrease:       16663,
+				VaccinationsIncreaseDate:   "20210110",
 			},
 		},
 	}

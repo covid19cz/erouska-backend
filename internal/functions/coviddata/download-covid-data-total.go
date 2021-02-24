@@ -41,6 +41,9 @@ type TotalsData struct {
 	PCRTestsTotal              int    `json:"provedene_testy_celkem" validate:"required"`
 	PCRTestsIncrease           int    `json:"provedene_testy_vcerejsi_den" validate:"required"`
 	PCRTestsIncreaseDate       string `json:"provedene_testy_vcerejsi_den_datum" validate:"required"`
+	VaccinationsTotal          int    `json:"vykazana_ockovani_celkem" validate:"required"`
+	VaccinationsIncrease       int    `json:"vykazana_ockovani_vcerejsi_den" validate:"required"`
+	VaccinationsIncreaseDate   string `json:"vykazana_ockovani_vcerejsi_den_datum" validate:"required"`
 }
 
 // HTTPClient interface for mocking fetchData
@@ -104,6 +107,7 @@ func fetchData(client HTTPClient) (*TotalsData, error) {
 	data.ConfirmedCasesIncreaseDate = reformatDate(data.ConfirmedCasesIncreaseDate)
 	data.AntigenTestsIncreaseDate = reformatDate(data.AntigenTestsIncreaseDate)
 	data.PCRTestsIncreaseDate = reformatDate(data.PCRTestsIncreaseDate)
+	data.VaccinationsIncreaseDate = reformatDate(data.PCRTestsIncreaseDate)
 
 	return &data, nil
 }
