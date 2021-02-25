@@ -35,6 +35,9 @@ service_environment = {
   cleanup = {
     OBSERVABILITY_EXPORTER = "NOOP"
   }
+  stats-puller = {
+    KEY_SERVER_URL = "https://exposure-i5jzq6zlxq-ew.a.run.app"
+  }
 }
 redis_cache_size = 1
 project          = "covid19cz"
