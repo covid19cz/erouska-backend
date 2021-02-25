@@ -16,6 +16,7 @@ service_environment = {
   }
   adminapi = {
     OBSERVABILITY_EXPORTER = "NOOP"
+    RATE_LIMIT_TOKENS      = "150"
   }
   server = {
     FIREBASE_PRIVACY_POLICY_URL   = "TODO"
