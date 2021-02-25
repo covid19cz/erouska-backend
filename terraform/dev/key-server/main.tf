@@ -11,7 +11,7 @@ provider "google" {
 }
 
 module "en" {
-  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=d51abd8"
+  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=v0.22.1"
 
   project = var.project
   region  = var.region
@@ -77,7 +77,7 @@ module "en" {
 
 module "cdn" {
 
-  source  = "../../modules/cdn"
+  source  = "../../modules/cdn-bucket"
   project = var.project
   region  = var.region
 
