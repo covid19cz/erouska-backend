@@ -107,7 +107,7 @@ func fetchData(client HTTPClient) (*TotalsData, error) {
 	data.ConfirmedCasesIncreaseDate = reformatDate(data.ConfirmedCasesIncreaseDate)
 	data.AntigenTestsIncreaseDate = reformatDate(data.AntigenTestsIncreaseDate)
 	data.PCRTestsIncreaseDate = reformatDate(data.PCRTestsIncreaseDate)
-	data.VaccinationsIncreaseDate = reformatDate(data.PCRTestsIncreaseDate)
+	data.VaccinationsIncreaseDate = reformatDate(data.VaccinationsIncreaseDate)
 
 	return &data, nil
 }

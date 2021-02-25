@@ -30,20 +30,19 @@ func (c *ClientMock) Do(req *http.Request) (*http.Response, error) {
             "provedene_testy_vcerejsi_den": 12185,
             "potvrzene_pripady_vcerejsi_den": 4283,
             "potvrzene_pripady_dnesni_den": 0,
-            "provedene_testy_vcerejsi_den_datum": "2021-01-10",
-            "potvrzene_pripady_vcerejsi_den_datum": "2021-01-10",
+            "provedene_testy_vcerejsi_den_datum": "2021-01-12",
+            "potvrzene_pripady_vcerejsi_den_datum": "2021-01-13",
             "potvrzene_pripady_dnesni_den_datum": "2021-01-11",
             "provedene_antigenni_testy_celkem": 1037613,
             "provedene_antigenni_testy_vcerejsi_den": 9743,
-            "provedene_antigenni_testy_vcerejsi_den_datum": "2021-01-10",
-			"vykazana_ockovani_celkem": 581542,
+            "provedene_antigenni_testy_vcerejsi_den_datum": "2021-01-14",
+            "vykazana_ockovani_celkem": 581542,
             "vykazana_ockovani_vcerejsi_den": 16663,
-            "vykazana_ockovani_vcerejsi_den_datum": "2021-01-10"
+            "vykazana_ockovani_vcerejsi_den_datum": "2021-01-15"
         }
     ]
 }
 `
-
 	r := ioutil.NopCloser(bytes.NewReader([]byte(json))) // r type is io.ReadCloser
 
 	return &http.Response{Body: r}, nil
@@ -71,14 +70,14 @@ func TestFetchData(t *testing.T) {
 				CurrentlyHospitalizedTotal: 6622,
 				PCRTestsIncrease:           12185,
 				ConfirmedCasesIncrease:     4283,
-				ConfirmedCasesIncreaseDate: "20210110",
-				PCRTestsIncreaseDate:       "20210110",
+				ConfirmedCasesIncreaseDate: "20210113",
+				PCRTestsIncreaseDate:       "20210112",
 				AntigenTestsTotal:          1037613,
 				AntigenTestsIncrease:       9743,
-				AntigenTestsIncreaseDate:   "20210110",
+				AntigenTestsIncreaseDate:   "20210114",
 				VaccinationsTotal:          581542,
 				VaccinationsIncrease:       16663,
-				VaccinationsIncreaseDate:   "20210110",
+				VaccinationsIncreaseDate:   "20210115",
 			},
 		},
 	}
