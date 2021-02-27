@@ -14,15 +14,14 @@ functions := $(shell find cmd -name \*main.go | awk -F'/' '{print $$2}')
 
 build: ## Build golang binaries
 	@for function in $(functions) ; do \
-		go build -ldflags="-s -w" -o bin/$$function cmd/$$function/*.go ; \
+		go build -mod vendor -ldflags="-s -w" -o bin/$$function cmd/$$function/*.go ; \
 	done
 
 lint: ## Lint the files
 	@golint -set_exit_status ${PKG_LIST}
 
 test: ## Run unittests
-	@go test -short ${PKG_LIST}
+	@go test -mod vendor -short ${PKG_LIST}
 
 dep: ## Get the dependencies
-	@go get -v -d ./...
 	@go get -u golang.org/x/lint/golint
