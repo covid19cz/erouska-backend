@@ -24,8 +24,10 @@ func init() {
 const (
 	//EnvLocal Our local testing environment.
 	EnvLocal Environment = "local"
-	//EnvAcc EnvAcc env of EFGS.
+	//EnvAcc Acc env of EFGS.
 	EnvAcc Environment = "acc"
+	//EnvProd Prod env of EFGS.
+	EnvProd Environment = "prod"
 )
 
 //GetEfgsEnvironmentOrFail Gets EFGS environment from ENV variable and fails if it's not available.
@@ -40,6 +42,8 @@ func GetEfgsEnvironmentOrFail() Environment {
 		return EnvLocal
 	case "acc":
 		return EnvAcc
+	case "prod":
+		return EnvProd
 	default:
 		panic(fmt.Sprintf("Invalid value of EFGS_ENV: %v", efgsEnv))
 	}
