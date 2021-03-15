@@ -14,6 +14,7 @@ service_environment = {
     CERTIFICATE_AUDIENCE   = "covid19cz"
     OBSERVABILITY_EXPORTER = "NOOP"
     RATE_LIMIT_TOKENS      = "150"
+    RATE_LIMIT_INTERVAL    = "1m"
   }
   server = {
     FIREBASE_PRIVACY_POLICY_URL   = "TODO"
@@ -34,6 +35,8 @@ service_environment = {
   }
   adminapi = {
     OBSERVABILITY_EXPORTER = "NOOP"
+    RATE_LIMIT_TOKENS      = "150"
+    RATE_LIMIT_INTERVAL    = "1m"
   }
 }
 notification-email = "marek.bartik@pipetail.io"

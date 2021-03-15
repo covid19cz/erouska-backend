@@ -13,10 +13,12 @@ service_environment = {
     CERTIFICATE_AUDIENCE   = "covid19cz"
     OBSERVABILITY_EXPORTER = "NOOP"
     RATE_LIMIT_TOKENS      = "150"
+    RATE_LIMIT_INTERVAL    = "1m"
   }
   adminapi = {
     OBSERVABILITY_EXPORTER = "NOOP"
     RATE_LIMIT_TOKENS      = "150"
+    RATE_LIMIT_INTERVAL    = "1m"
   }
   server = {
     FIREBASE_PRIVACY_POLICY_URL   = "TODO"
