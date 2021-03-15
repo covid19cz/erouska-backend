@@ -9,6 +9,8 @@ import (
 )
 import "github.com/hashicorp/go-retryablehttp"
 
+const defaultRetryDuration time.Duration = 5
+
 //NewThrottlingAwareClient Wraps given client and handles retries on HTTP 429.
 func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format string, args ...interface{})) *http.Client {
 	client := retryablehttp.NewClient()
@@ -25,19 +27,20 @@ func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format
 	client.Backoff = func(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
 		if resp == nil {
 			requestLogger("Error while parsing retry-after header: response is nil!")
-			return 0
+			return defaultRetryDuration
 		}
 
 		retryAfter, err := time.Parse(time.RFC1123, resp.Header.Get("retry-after"))
 		if err != nil {
 			requestLogger("Error while parsing retry-after header: %v", err)
-			return 0
+			requestLogger("Retrieved response: %+v", resp)
+			return defaultRetryDuration
 		}
 
 		// Add random 5-10s delay to reduce the contention
 		retryAfter = retryAfter.Add(time.Second * time.Duration(5+rand.Intn(5)))
 
-		var duration time.Duration = 0
+		var duration = defaultRetryDuration
 
 		now := time.Now()
 		if retryAfter.After(now) {
