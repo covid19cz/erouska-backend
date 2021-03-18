@@ -81,7 +81,7 @@ func prepareNewVersion(ctx context.Context, config *config) error {
 		return fmt.Errorf("Error while fetching data: %v", err)
 	}
 
-	yestPublishers, err := getPublishersCount(ctx, config)
+	yestPublishers, err := getPublishersCount(ctx, config, yesterday.Format("20060102"))
 	if err != nil {
 		return fmt.Errorf("Error while fetching data: %v", err)
 	}
@@ -155,28 +155,17 @@ func getActivationsCount(ctx context.Context, config *config, key string) (int32
 	return int32(data.UsersCount), nil
 }
 
-func getPublishersCount(ctx context.Context, config *config) (int32, error) {
+func getPublishersCount(ctx context.Context, config *config, key string) (int32, error) {
 	logger := logging.FromContext(ctx)
 
-	startOfTomorrow := config.now.UTC().Add(time.Hour * -24).Truncate(time.Hour * 24)
+	logger.Debugf("Getting publishers counter with key %v", key)
 
-	values, err := getPublishersValues(ctx, config, startOfTomorrow, 84600 /* 1 day */)
-	if err != nil {
-		logger.Debugf("Could not fetch data for publishers of last day: %v", err)
+	var data structs.PublisherCounter
+
+	if err := config.realtimedbClient.NewRef(constants.DbPublisherCountersPrefix+key).Get(ctx, &data); err != nil {
+		logger.Debugf("Error while querying DB: %v", err)
 		return 0, err
 	}
 
-	return values[0], nil // get the newest from daily buckets
-}
-
-func getPublishersValues(ctx context.Context, config *config, from time.Time, sumWindow int64) ([]int32, error) {
-	startOfToday := config.now.UTC().Truncate(time.Hour * 24)
-
-	// this just adds the configuration... one would use function currying of Go supports such thing
-	return config.monitoringClient.ReadSummarized(ctx,
-		config.projectID,
-		`resource.type="cloud_run_revision" metric.type="logging.googleapis.com/user/publish-exposures-inserted-flattened"`,
-		from,
-		startOfToday,
-		sumWindow)
+	return int32(data.PublishersCount), nil
 }
