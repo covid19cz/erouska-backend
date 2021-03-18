@@ -6,7 +6,7 @@ terraform {
 }
 
 module "en" {
-  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=d51abd8"
+  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=v0.22.1"
 
   project = var.project
   region  = var.region
@@ -72,9 +72,7 @@ module "cdn" {
 
   https_redirect = true
 
-  // TODO: this output is supported in newer terraform module version
-  //bucket_name = module.en.export_bucket
-  bucket_name = "exposure-notification-export-qhqcx"
+  bucket_name = module.en.export_bucket
 }
 
 provider "google" {
