@@ -45,6 +45,7 @@ type PublisherCounter struct {
 type EfgsCounter struct {
 	KeysUploaded   int `json:"keysUploaded"`
 	KeysDownloaded int `json:"keysDownloaded"`
+	Publishers     int `json:"publishers"`
 }
 
 //VerificationCodeMetadata DB entity for verification code metadata.
