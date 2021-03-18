@@ -26,6 +26,8 @@ service_environment = {
   }
   e2e-runner = {
     OBSERVABILITY_EXPORTER = "NOOP"
+    KEY_SERVER             = "https://exposure-fghz64a2xa-ew.a.run.app/v1/publish"
+    HEALTH_AUTHORITY_CODE  = "cz.covid19cz.erouska"
   }
   enx-redirect = {
     OBSERVABILITY_EXPORTER = "NOOP"
