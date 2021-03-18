@@ -305,26 +305,26 @@ func updateCounters(ctx context.Context, client *realtimedb.Client, keysCount in
 
 	// update keys daily counter
 	if err := updateKeysCounter(ctx, client, constants.DbPublisherCountersPrefix+date, keysCount); err != nil {
-		logger.Warnf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
+		logger.Debugf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
 		return err
 	}
 
 	// update keys total counter
 	if err := updateKeysCounter(ctx, client, constants.DbPublisherCountersPrefix+"total", keysCount); err != nil {
-		logger.Warnf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
+		logger.Debugf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
 		return err
 	}
 
 	if efgsEnabled {
 		// update publishers daily counter
 		if err := updatePublishersCounter(ctx, client, constants.DbEfgsCountersPrefix+date); err != nil {
-			logger.Warnf("Cannot increase EFGS publishers counter due to unknown error: %+v", err.Error())
+			logger.Debugf("Cannot increase EFGS publishers counter due to unknown error: %+v", err.Error())
 			return err
 		}
 
 		// update publishers total counter
 		if err := updatePublishersCounter(ctx, client, constants.DbEfgsCountersPrefix+"total"); err != nil {
-			logger.Warnf("Cannot increase EFGS publishers counter due to unknown error: %+v", err.Error())
+			logger.Debugf("Cannot increase EFGS publishers counter due to unknown error: %+v", err.Error())
 			return err
 		}
 	}
