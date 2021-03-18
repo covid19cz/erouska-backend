@@ -101,12 +101,14 @@ func publishKeys(ctx context.Context, config *config, w http.ResponseWriter, req
 	if serverResponse.Code == "" && serverResponse.ErrorMessage == "" {
 		logger.Infof("Successfully uploaded %v keys to Key server (%v keys sent)", serverResponse.InsertedExposures, len(serverRequest.Keys))
 
-		if err := updateCounters(ctx, config.realtimeDBClient, serverResponse.InsertedExposures+1); err != nil {
-			logger.Errorf("Could not update publishers counter: %+v", err)
+		efgsConsent := requestPayload.ConsentToFederation
+
+		if err := updateCounters(ctx, config.realtimeDBClient, serverResponse.InsertedExposures+1, efgsConsent); err != nil {
+			logger.Errorf("Could not update publishers and keys counter: %+v", err)
 			// don't fail, this is not so important
 		}
 
-		if requestPayload.ConsentToFederation {
+		if efgsConsent {
 			logger.Debug("Going to save uploaded keys to EFGS database")
 
 			if err = persistKeysForEfgs(ctx, config, requestPayload); err != nil {
@@ -296,28 +298,42 @@ func extractDoS(request v1.PublishKeysRequestDevice) time.Time {
 	return time.Unix(soi*600, 0).Truncate(24 * time.Hour)
 }
 
-func updateCounters(ctx context.Context, client *realtimedb.Client, keysCount int) error {
+func updateCounters(ctx context.Context, client *realtimedb.Client, keysCount int, efgsEnabled bool) error {
 	logger := logging.FromContext(ctx).Named("publish-keys.updateCounters")
 
 	var date = utils.GetTimeNow().Format("20060102")
 
-	// update daily counter
-	if err := updateCounter(ctx, client, constants.DbPublisherCountersPrefix+date, keysCount); err != nil {
-		logger.Warnf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
+	// update keys daily counter
+	if err := updateKeysCounter(ctx, client, constants.DbPublisherCountersPrefix+date, keysCount); err != nil {
+		logger.Debugf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
 		return err
 	}
 
-	// update total counter
-	if err := updateCounter(ctx, client, constants.DbPublisherCountersPrefix+"total", keysCount); err != nil {
-		logger.Warnf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
+	// update keys total counter
+	if err := updateKeysCounter(ctx, client, constants.DbPublisherCountersPrefix+"total", keysCount); err != nil {
+		logger.Debugf("Cannot increase publishers counter due to unknown error: %+v", err.Error())
 		return err
+	}
+
+	if efgsEnabled {
+		// update publishers daily counter
+		if err := updatePublishersCounter(ctx, client, constants.DbEfgsCountersPrefix+date); err != nil {
+			logger.Debugf("Cannot increase EFGS publishers counter due to unknown error: %+v", err.Error())
+			return err
+		}
+
+		// update publishers total counter
+		if err := updatePublishersCounter(ctx, client, constants.DbEfgsCountersPrefix+"total"); err != nil {
+			logger.Debugf("Cannot increase EFGS publishers counter due to unknown error: %+v", err.Error())
+			return err
+		}
 	}
 
 	return nil
 }
 
-func updateCounter(ctx context.Context, client *realtimedb.Client, dbKey string, keysCount int) error {
-	logger := logging.FromContext(ctx).Named("publish-keys.updateCounter")
+func updateKeysCounter(ctx context.Context, client *realtimedb.Client, dbKey string, keysCount int) error {
+	logger := logging.FromContext(ctx).Named("publish-keys.updateKeysCounter")
 
 	return client.RunTransaction(ctx, dbKey, func(tn db.TransactionNode) (interface{}, error) {
 		var state structs.PublisherCounter
@@ -330,6 +346,26 @@ func updateCounter(ctx context.Context, client *realtimedb.Client, dbKey string,
 
 		state.PublishersCount++
 		state.KeysCount += keysCount
+
+		logger.Debugf("Saving updated counter state, dbKey %v: %+v", dbKey, state)
+
+		return state, nil
+	})
+}
+
+func updatePublishersCounter(ctx context.Context, client *realtimedb.Client, dbKey string) error {
+	logger := logging.FromContext(ctx).Named("publish-keys.updatePublishersCounter")
+
+	return client.RunTransaction(ctx, dbKey, func(tn db.TransactionNode) (interface{}, error) {
+		var state structs.EfgsCounter
+
+		if err := tn.Unmarshal(&state); err != nil {
+			return nil, err
+		}
+
+		logger.Debugf("Found counter state, dbKey %v: %+v", dbKey, state)
+
+		state.Publishers++
 
 		logger.Debugf("Saving updated counter state, dbKey %v: %+v", dbKey, state)
 
