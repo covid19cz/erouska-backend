@@ -38,6 +38,9 @@ service_environment = {
     RATE_LIMIT_TOKENS      = "150"
     RATE_LIMIT_INTERVAL    = "1m"
   }
+  stats-puller = {
+    KEY_SERVER_URL = "https://exposure-fghz64a2xa-ew.a.run.app"
+  }
 }
 notification-email = "marek.bartik@pipetail.io"
 project            = "cosmic-bonus-287409"
