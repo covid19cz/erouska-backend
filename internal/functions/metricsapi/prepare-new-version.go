@@ -86,17 +86,28 @@ func prepareNewVersion(ctx context.Context, config *config) error {
 		return fmt.Errorf("Error while fetching data: %v", err)
 	}
 
+	yestEfgs, err := getEfgsCounter(ctx, config, yesterday.Format("20060102"))
+	if err != nil {
+		return fmt.Errorf("Error while fetching data: %v", err)
+	}
+
 	var today = config.now.Format("20060102")
 
 	data := structs.MetricsData{
-		Modified:               config.now.Unix(),
-		Date:                   today,
-		ActivationsYesterday:   yestActivations,
-		ActivationsTotal:       yestData.ActivationsTotal + yestActivations,
-		KeyPublishersYesterday: yestPublishers,
-		KeyPublishersTotal:     yestData.KeyPublishersTotal + yestPublishers,
-		NotificationsYesterday: yestNotifications,
-		NotificationsTotal:     yestData.NotificationsTotal + yestNotifications,
+		Modified:                    config.now.Unix(),
+		Date:                        today,
+		ActivationsYesterday:        yestActivations,
+		ActivationsTotal:            yestData.ActivationsTotal + yestActivations,
+		KeyPublishersYesterday:      yestPublishers,
+		KeyPublishersTotal:          yestData.KeyPublishersTotal + yestPublishers,
+		NotificationsYesterday:      yestNotifications,
+		NotificationsTotal:          yestData.NotificationsTotal + yestNotifications,
+		EfgsKeysDownloadedYesterday: int32(yestEfgs.KeysDownloaded),
+		EfgsKeysDownloadedTotal:     yestData.EfgsKeysDownloadedTotal + int32(yestEfgs.KeysDownloaded),
+		EfgsKeysUploadedYesterday:   int32(yestEfgs.KeysUploaded),
+		EfgsKeysUploadedTotal:       yestData.EfgsKeysUploadedTotal + int32(yestEfgs.KeysUploaded),
+		EfgsPublishersYesterday:     int32(yestEfgs.Publishers),
+		EfgsPublishersTotal:         yestData.EfgsPublishersTotal + int32(yestEfgs.Publishers),
 	}
 
 	logger.Debugf("Collected data: %+v", data)
@@ -168,4 +179,22 @@ func getPublishersCount(ctx context.Context, config *config, key string) (int32,
 	}
 
 	return int32(data.PublishersCount), nil
+}
+
+func getEfgsCounter(ctx context.Context, config *config, key string) (*structs.EfgsCounter, error) {
+	logger := logging.FromContext(ctx)
+
+	logger.Debugf("Getting EFGS publishers with key %v", key)
+
+	var data structs.EfgsCounter
+
+	if err := config.realtimedbClient.NewRef(constants.DbEfgsCountersPrefix+key).Get(ctx, &data); err != nil {
+		if status.Code(err) != codes.NotFound {
+			return nil, fmt.Errorf("Error while querying Firestore: %v", err)
+		}
+
+		logger.Debug("EFGS counter for '%v' was not found, using default value", key)
+	}
+
+	return &data, nil
 }
