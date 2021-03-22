@@ -66,12 +66,18 @@ type StringValue struct {
 
 //MetricsData Data of metrics.
 type MetricsData struct {
-	Modified               int64  `json:"modified"`
-	Date                   string `json:"date"`
-	ActivationsYesterday   int32  `json:"activations_yesterday"`
-	ActivationsTotal       int32  `json:"activations_total"`
-	KeyPublishersYesterday int32  `json:"key_publishers_yesterday"`
-	KeyPublishersTotal     int32  `json:"key_publishers_total"`
-	NotificationsYesterday int32  `json:"notifications_yesterday"`
-	NotificationsTotal     int32  `json:"notifications_total"`
+	Modified                    int64  `json:"modified"`
+	Date                        string `json:"date"`
+	ActivationsYesterday        int32  `json:"activations_yesterday"`
+	ActivationsTotal            int32  `json:"activations_total"`
+	KeyPublishersYesterday      int32  `json:"key_publishers_yesterday"`
+	KeyPublishersTotal          int32  `json:"key_publishers_total"`
+	NotificationsYesterday      int32  `json:"notifications_yesterday"`
+	NotificationsTotal          int32  `json:"notifications_total"`
+	EfgsKeysUploadedTotal       int32  `json:"efgs_keys_uploaded_total"`
+	EfgsKeysUploadedYesterday   int32  `json:"efgs_keys_uploaded_yesterday"`
+	EfgsKeysDownloadedTotal     int32  `json:"efgs_keys_downloaded_total"`
+	EfgsKeysDownloadedYesterday int32  `json:"efgs_keys_downloaded_yesterday"`
+	EfgsPublishersTotal         int32  `json:"efgs_publishers_total"`
+	EfgsPublishersYesterday     int32  `json:"efgs_publishers_yesterday"`
 }
