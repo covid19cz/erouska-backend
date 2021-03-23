@@ -45,6 +45,11 @@ func DownloadCovidDataTotal(w http.ResponseWriter, r *http.Request) {
 	coviddata.DownloadCovidDataTotal(w, r)
 }
 
+// DownloadAndCountVaccinations handler.
+func DownloadAndCountVaccinations(w http.ResponseWriter, r *http.Request) {
+	coviddata.DownloadAndCountVaccinations(w, r)
+}
+
 // GetCovidData handler.
 func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	coviddata.GetCovidData(w, r)
