@@ -53,9 +53,23 @@ locals {
     "roles/datastore.user"
   ]
 
+  # DownloadAndCountVaccinations
+
+  dwnvaccinations_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/datastore.user"
+  ]
+
   # DownloadCovidDataTotal - invoker
 
   downloadcovid_invoker_roles = [
+    "roles/cloudfunctions.serviceAgent",
+    "roles/iam.serviceAccountUser"
+  ]
+
+  # DownloadAndCountVaccinations - invoker
+
+  dwnvaccinations_invoker_roles = [
     "roles/cloudfunctions.serviceAgent",
     "roles/iam.serviceAccountUser"
   ]
@@ -211,6 +225,24 @@ resource "google_project_iam_member" "downloadcoviddata" {
   member = "serviceAccount:${google_service_account.downloadcoviddata.email}"
 }
 
+# DownloadAndCountVaccinations
+
+data "google_cloudfunctions_function" "dwnvaccinations" {
+  name = "dwnvaccinations"
+  project = var.project
+}
+
+resource "google_service_account" "dwnvaccinations" {
+  account_id = "dwn-and-count-vaccinations"
+  display_name = "dwnvaccinations cloud function service account"
+}
+
+resource "google_project_iam_member" "dwnvaccinations" {
+  count = length(local.dwnvaccinations_roles)
+  role = local.dwnvaccinations_roles[count.index]
+  member = "serviceAccount:${google_service_account.dwnvaccinations.email}"
+}
+
 # DownloadCovidDataTotal - invoker
 
 resource "google_service_account" "downloadcovid-invoker" {
@@ -250,6 +282,45 @@ resource "google_cloud_scheduler_job" "downloadcovid-worker" {
     google_project_service.services["cloudscheduler.googleapis.com"],
   ]
 }
+
+# DownloadAndCountVaccinations - invoker
+
+resource "google_service_account" "dwnvaccinations-invoker" {
+  account_id   = "dwnvaccinations-invoker-sa"
+  display_name = "dwnvaccinations invoker"
+}
+
+resource "google_project_iam_member" "dwnvaccinations-invoker" {
+  count  = length(local.dwnvaccinations_invoker_roles)
+  role   = local.dwnvaccinations_invoker_roles[count.index]
+  member = "serviceAccount:${google_service_account.dwnvaccinations-invoker.email}"
+}
+
+resource "google_cloud_scheduler_job" "dwnvaccinations-worker" {
+  name             = "dwnvaccinations-worker"
+  region           = var.cloudscheduler_location
+  schedule         = "*/5 * * * *"
+  time_zone        = "Europe/Prague"
+  attempt_deadline = "600s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "GET"
+    uri         = data.google_cloudfunctions_function.dwnvaccinations.https_trigger_url
+    oidc_token {
+      audience              = data.google_cloudfunctions_function.dwnvaccinations.https_trigger_url
+      service_account_email = google_service_account.dwnvaccinations-invoker.email
+    }
+  }
+
+  depends_on = [
+    google_project_service.services["cloudscheduler.googleapis.com"],
+  ]
+}
+
 # GetCovidData
 
 resource "google_service_account" "getcoviddata" {

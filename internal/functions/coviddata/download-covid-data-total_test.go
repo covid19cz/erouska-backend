@@ -83,7 +83,7 @@ func TestFetchData(t *testing.T) {
 	}
 
 	for _, table := range tables {
-		data, err := fetchData(client)
+		data, err := fetchCovidData(client)
 
 		diff := cmp.Diff(*data, table.x)
 		if diff != "" {

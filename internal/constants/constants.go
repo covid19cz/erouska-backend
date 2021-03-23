@@ -15,6 +15,9 @@ const CollectionNotificationCounters = "notificationCounters"
 //CollectionCovidDataTotal Name of the collection.
 const CollectionCovidDataTotal = "covidDataTotal"
 
+//CollectionVaccinations Name of the collection.
+const CollectionVaccinations = "vaccinations"
+
 //CollectionMetrics Name of the collection.
 const CollectionMetrics = "metrics"
 
