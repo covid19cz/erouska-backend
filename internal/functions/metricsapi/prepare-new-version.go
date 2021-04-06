@@ -108,6 +108,8 @@ func prepareNewVersion(ctx context.Context, config *config) error {
 		EfgsKeysUploadedTotal:       yestData.EfgsKeysUploadedTotal + int32(yestEfgs.KeysUploaded),
 		EfgsPublishersYesterday:     int32(yestEfgs.Publishers),
 		EfgsPublishersTotal:         yestData.EfgsPublishersTotal + int32(yestEfgs.Publishers),
+		EfgsImportedCzYesterday:     int32(yestEfgs.KeysImportedCZ),
+		EfgsImportedCzTotal:         yestData.EfgsImportedCzTotal + int32(yestEfgs.KeysImportedCZ),
 	}
 
 	logger.Debugf("Collected data: %+v", data)

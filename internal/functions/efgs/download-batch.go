@@ -155,7 +155,7 @@ func downloadAndSaveKeys(ctx context.Context, config *downloadConfig, now time.T
 	if keysCount > 0 {
 		logger.Infof("Successfully downloaded %v keys from EFGS, going to enqueue them", keysCount)
 
-		if err = enqueueForImport(ctx, config, keys); err != nil {
+		if _, err = enqueueForImport(ctx, config, keys); err != nil {
 			logger.Debugf("Could not enqueue batch from EFGS for import: %v", err)
 			return err
 		}
@@ -224,14 +224,16 @@ func downloadAllRecursively(ctx context.Context, config *downloadConfig, now tim
 	if keysCount > 0 {
 		logger.Infof("Successfully downloaded %v keys from EFGS, going to enqueue them", keysCount)
 
-		if err := enqueueForImport(ctx, config, keys); err != nil {
+		czKeys, err := enqueueForImport(ctx, config, keys)
+
+		if err != nil {
 			logger.Errorf("Could not download batch from EFGS: %v", err)
 			return err
 		}
 
 		logger.Infof("Successfully enqueued %v downloaded keys for import to our Key server", keysCount)
 
-		if err := updateDownloadedCounters(ctx, config, now, keysCount); err != nil {
+		if err := updateDownloadedCounters(ctx, config, now, czKeys, keysCount); err != nil {
 			logger.Warnf("Could not update EFGS download counters: %v", err)
 		}
 	}
@@ -273,7 +275,7 @@ func nextBatchParams(ctx context.Context, now time.Time, last efgsapi.BatchDownl
 	}
 }
 
-func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsapi.DiagnosisKey) error {
+func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsapi.DiagnosisKey) (int, error) {
 	logger := logging.FromContext(ctx).Named("efgs.enqueueForImport")
 
 	now := time.Now().Add(30 - time.Minute)
@@ -283,6 +285,7 @@ func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsap
 	sortedKeys := make(map[string][]keyserverapi.ExposureKey)
 
 	skippedKeys := 0
+	importedAsCZ := 0
 
 	for _, key := range keys {
 		// filter out keys that are too old
@@ -291,17 +294,18 @@ func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsap
 			continue
 		}
 
-		var origin string
+		var dest string
 
 		// Import keys that relates to us as our own keys (#171)
 		// The comparison is case-insensitive as the code should be ISO-3166-1 alpha 2
 		if slice.ContainsString(key.VisitedCountries, czCode) {
-			origin = czCode
+			dest = czCode
+			importedAsCZ++
 		} else {
-			origin = key.Origin
+			dest = key.Origin
 		}
 
-		mapKey := strings.ToUpper(origin)
+		mapKey := strings.ToUpper(dest)
 		sortedKeys[mapKey] = append(sortedKeys[mapKey], key.ToExposureKey())
 	}
 
@@ -347,10 +351,10 @@ func enqueueForImport(ctx context.Context, config *downloadConfig, keys []efgsap
 	logger.Infof("Enqueued %v batches (in total) for import", batchesCount)
 
 	if len(errors) != 0 {
-		return fmt.Errorf("Following errors have happened:\n%v", strings.Join(errors, "\n"))
+		return 0, fmt.Errorf("Following errors have happened:\n%v", strings.Join(errors, "\n"))
 	}
 
-	return nil
+	return importedAsCZ, nil
 }
 
 func downloadKeys(ctx context.Context, config *downloadConfig, date string, batchTag string) ([]efgsapi.DiagnosisKey, error) {
@@ -464,19 +468,19 @@ func postponeRest(ctx context.Context, config *downloadConfig, nextBatch efgsapi
 	return nil
 }
 
-func updateDownloadedCounters(ctx context.Context, config *downloadConfig, now time.Time, keysCount int) error {
+func updateDownloadedCounters(ctx context.Context, config *downloadConfig, now time.Time, czKeys int, totalKeys int) error {
 	logger := logging.FromContext(ctx).Named("efgs.download-batch.updateDownloadedCounters")
 
 	var date = now.Format("20060102")
 
 	// update daily counter
-	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+date, func(c int) int { return c + keysCount }); err != nil {
+	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+date, increaseCounter(czKeys, totalKeys)); err != nil {
 		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
 		return err
 	}
 
 	// update total counter
-	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+"total", func(c int) int { return c + keysCount }); err != nil {
+	if err := updateDownloadedCounter(ctx, config.RealtimeDBClient, constants.DbEfgsCountersPrefix+"total", increaseCounter(czKeys, totalKeys)); err != nil {
 		logger.Warnf("Cannot increase EFGS counter due to unknown error: %+v", err.Error())
 		return err
 	}
@@ -484,7 +488,7 @@ func updateDownloadedCounters(ctx context.Context, config *downloadConfig, now t
 	return nil
 }
 
-func updateDownloadedCounter(ctx context.Context, client *realtimedb.Client, dbKey string, countFn func(int) int) error {
+func updateDownloadedCounter(ctx context.Context, client *realtimedb.Client, dbKey string, modifyFn func(structs.EfgsCounter) structs.EfgsCounter) error {
 	logger := logging.FromContext(ctx).Named("efgs.download-batch.updateDownloadedCounter")
 
 	return client.RunTransaction(ctx, dbKey, func(tn db.TransactionNode) (interface{}, error) {
@@ -496,10 +500,19 @@ func updateDownloadedCounter(ctx context.Context, client *realtimedb.Client, dbK
 
 		logger.Debugf("Found counter state, dbKey %v: %+v", dbKey, state)
 
-		state.KeysDownloaded = countFn(state.KeysDownloaded)
+		state = modifyFn(state)
 
 		logger.Debugf("Saving updated counter state, dbKey %v: %+v", dbKey, state)
 
 		return state, nil
 	})
+}
+
+func increaseCounter(czKeys int, totalKeys int) func(structs.EfgsCounter) structs.EfgsCounter {
+	return func(state structs.EfgsCounter) structs.EfgsCounter {
+		state.KeysDownloaded += totalKeys
+		state.KeysImportedCZ += czKeys
+
+		return state
+	}
 }
