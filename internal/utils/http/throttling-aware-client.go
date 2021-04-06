@@ -9,7 +9,7 @@ import (
 )
 import "github.com/hashicorp/go-retryablehttp"
 
-const defaultRetryDuration time.Duration = 5
+const defaultRetryDuration = 5 * time.Second
 
 //NewThrottlingAwareClient Wraps given client and handles retries on HTTP 429.
 func NewThrottlingAwareClient(httpClient *http.Client, requestLogger func(format string, args ...interface{})) *http.Client {
