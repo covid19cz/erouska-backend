@@ -45,6 +45,7 @@ type PublisherCounter struct {
 type EfgsCounter struct {
 	KeysUploaded   int `json:"keysUploaded"`
 	KeysDownloaded int `json:"keysDownloaded"`
+	KeysImportedCZ int `json:"keysImportedCZ"`
 	Publishers     int `json:"publishers"`
 }
 
@@ -80,4 +81,6 @@ type MetricsData struct {
 	EfgsKeysDownloadedYesterday int32  `json:"efgs_keys_downloaded_yesterday"`
 	EfgsPublishersTotal         int32  `json:"efgs_publishers_total"`
 	EfgsPublishersYesterday     int32  `json:"efgs_publishers_yesterday"`
+	EfgsImportedCzTotal         int32  `json:"efgs_imported_cz_total"`
+	EfgsImportedCzYesterday     int32  `json:"efgs_imported_cz_yesterday"`
 }
