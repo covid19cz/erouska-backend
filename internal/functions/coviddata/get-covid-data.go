@@ -43,6 +43,30 @@ func fetchTotals(ctx context.Context, client store.Client, date string) (*Totals
 	return &totals, nil
 }
 
+func fetchVaccinations(ctx context.Context, client store.Client, date string) (*VaccinationsAggregatedData, error) {
+	logger := logging.FromContext(ctx).Named("fetchVaccinations")
+
+	snap, err := client.Doc(constants.CollectionVaccinations, date).Get(ctx)
+
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, &errors.NotFoundError{Msg: fmt.Sprintf("Could not find vaccination data for %v", date)}
+		}
+
+		return nil, fmt.Errorf("Error while querying Firestore: %v", err)
+	}
+
+	var vaccinationData VaccinationsAggregatedData
+
+	if err := snap.DataTo(&vaccinationData); err != nil {
+		panic(fmt.Sprintf("could not parse input: %s", err))
+	}
+
+	logger.Infof("fetched vaccinations data: %+v", vaccinationData)
+
+	return &vaccinationData, nil
+}
+
 // GetCovidData handler.
 func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
@@ -78,6 +102,7 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	failed := false
+	vaccinationsFailed := false
 
 	totalsData, err := fetchTotals(ctx, storeClient, date)
 	if err != nil {
@@ -92,11 +117,34 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	if failed && shouldFallback {
 		// we try to fetch data from yesterday
 		t, _ := time.Parse("20060102", date)
-		date = t.AddDate(0, 0, -1).Format("20060102")
+		totalsDataDate := t.AddDate(0, 0, -1).Format("20060102")
 
-		totalsData, err = fetchTotals(ctx, storeClient, date)
+		totalsData, err = fetchTotals(ctx, storeClient, totalsDataDate)
 		if err != nil {
 			logger.Errorf("Error refetching data from firestore: %v", err)
+			httputils.SendErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	vaccinationData, err := fetchVaccinations(ctx, storeClient, date)
+	if err != nil {
+		logger.Errorf("Error fatching vaccination data from firestore: %v", err)
+		vaccinationsFailed = true
+		if !shouldFallback {
+			httputils.SendErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	if vaccinationsFailed && shouldFallback {
+		// we try to fetch data from yesterday
+		t, _ := time.Parse("20060102", date)
+		vaccinationsDataDate := t.AddDate(0, 0, -1).Format("20060102")
+
+		vaccinationData, err = fetchVaccinations(ctx, storeClient, vaccinationsDataDate)
+		if err != nil {
+			logger.Errorf("Error refetching vaccinations firestore: %v", err)
 			httputils.SendErrorResponse(w, r, err)
 			return
 		}
@@ -120,26 +168,31 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := v1.GetCovidDataResponse{
-		Date:                       date,
-		ActiveCasesTotal:           totalsData.ActiveCasesTotal,
-		CuredTotal:                 totalsData.CuredTotal,
-		DeceasedTotal:              totalsData.DeceasedTotal,
-		CurrentlyHospitalizedTotal: totalsData.CurrentlyHospitalizedTotal,
-		TestsTotal:                 testsTotal,        // this value is duplicated for backward compatibility
-		TestsIncrease:              testsIncrease,     // this value is duplicated for backward compatibility
-		TestsIncreaseDate:          testsIncreaseDate, // this value is duplicated for backward compatibility
-		ConfirmedCasesTotal:        totalsData.ConfirmedCasesTotal,
-		ConfirmedCasesIncrease:     totalsData.ConfirmedCasesIncrease,
-		ConfirmedCasesIncreaseDate: totalsData.ConfirmedCasesIncreaseDate,
-		AntigenTestsTotal:          totalsData.AntigenTestsTotal,
-		AntigenTestsIncrease:       totalsData.AntigenTestsIncrease,
-		AntigenTestsIncreaseDate:   totalsData.AntigenTestsIncreaseDate,
-		PCRTestsTotal:              testsTotal,
-		PCRTestsIncrease:           testsIncrease,
-		PCRTestsIncreaseDate:       testsIncreaseDate,
-		VaccinationsTotal:          totalsData.VaccinationsTotal,
-		VaccinationsIncrease:       totalsData.VaccinationsIncrease,
-		VaccinationsIncreaseDate:   totalsData.VaccinationsIncreaseDate,
+		Date:                        totalsData.Date,
+		ActiveCasesTotal:            totalsData.ActiveCasesTotal,
+		CuredTotal:                  totalsData.CuredTotal,
+		DeceasedTotal:               totalsData.DeceasedTotal,
+		CurrentlyHospitalizedTotal:  totalsData.CurrentlyHospitalizedTotal,
+		TestsTotal:                  testsTotal,        // this value is duplicated for backward compatibility
+		TestsIncrease:               testsIncrease,     // this value is duplicated for backward compatibility
+		TestsIncreaseDate:           testsIncreaseDate, // this value is duplicated for backward compatibility
+		ConfirmedCasesTotal:         totalsData.ConfirmedCasesTotal,
+		ConfirmedCasesIncrease:      totalsData.ConfirmedCasesIncrease,
+		ConfirmedCasesIncreaseDate:  totalsData.ConfirmedCasesIncreaseDate,
+		AntigenTestsTotal:           totalsData.AntigenTestsTotal,
+		AntigenTestsIncrease:        totalsData.AntigenTestsIncrease,
+		AntigenTestsIncreaseDate:    totalsData.AntigenTestsIncreaseDate,
+		PCRTestsTotal:               testsTotal,
+		PCRTestsIncrease:            testsIncrease,
+		PCRTestsIncreaseDate:        testsIncreaseDate,
+		VaccinationsTotal:           totalsData.VaccinationsTotal,
+		VaccinationsIncrease:        totalsData.VaccinationsIncrease,
+		VaccinationsIncreaseDate:    totalsData.VaccinationsIncreaseDate,
+		VaccinationsDailyDosesDate:  vaccinationData.Date,
+		VaccinationsDailyFirstDose:  vaccinationData.DailyFirstDose,
+		VaccinationsDailySecondDose: vaccinationData.DailySecondDose,
+		VaccinationsTotalFirstDose:  vaccinationData.TotalFirstDose,
+		VaccinationsTotalSecondDose: vaccinationData.TotalSecondDose,
 	}
 
 	httputils.SendResponse(w, r, res)

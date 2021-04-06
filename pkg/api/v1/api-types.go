@@ -53,26 +53,31 @@ type GetCovidDataRequest struct {
 
 //GetCovidDataResponse Response for GetCovidData function
 type GetCovidDataResponse struct {
-	Date                       string `json:"date"`
-	ActiveCasesTotal           int    `json:"activeCasesTotal"  validate:"required"`
-	CuredTotal                 int    `json:"curedTotal"  validate:"required"`
-	DeceasedTotal              int    `json:"deceasedTotal"  validate:"required"`
-	CurrentlyHospitalizedTotal int    `json:"currentlyHospitalizedTotal"  validate:"required"`
-	TestsTotal                 int    `json:"testsTotal"  validate:"required"`
-	TestsIncrease              int    `json:"testsIncrease"  validate:"required"`
-	TestsIncreaseDate          string `json:"testsIncreaseDate" validate:"required"`
-	ConfirmedCasesTotal        int    `json:"confirmedCasesTotal"  validate:"required"`
-	ConfirmedCasesIncrease     int    `json:"confirmedCasesIncrease"  validate:"required"`
-	ConfirmedCasesIncreaseDate string `json:"confirmedCasesIncreaseDate" validate:"required"`
-	AntigenTestsTotal          int    `json:"antigenTestsTotal" validate:"required"`
-	AntigenTestsIncrease       int    `json:"antigenTestsIncrease"  validate:"required"`
-	AntigenTestsIncreaseDate   string `json:"antigenTestsIncreaseDate" validate:"required"`
-	PCRTestsTotal              int    `json:"pcrTestsTotal"  validate:"required"`
-	PCRTestsIncrease           int    `json:"pcrTestsIncrease"  validate:"required"`
-	PCRTestsIncreaseDate       string `json:"pcrTestsIncreaseDate" validate:"required"`
-	VaccinationsTotal          int    `json:"vaccinationsTotal" validate:"required"`
-	VaccinationsIncrease       int    `json:"vaccinationsIncrease" validate:"required"`
-	VaccinationsIncreaseDate   string `json:"vaccinationsIncreaseDate" validate:"required"`
+	Date                        string `json:"date"`
+	ActiveCasesTotal            int    `json:"activeCasesTotal"  validate:"required"`
+	CuredTotal                  int    `json:"curedTotal"  validate:"required"`
+	DeceasedTotal               int    `json:"deceasedTotal"  validate:"required"`
+	CurrentlyHospitalizedTotal  int    `json:"currentlyHospitalizedTotal"  validate:"required"`
+	TestsTotal                  int    `json:"testsTotal"  validate:"required"`
+	TestsIncrease               int    `json:"testsIncrease"  validate:"required"`
+	TestsIncreaseDate           string `json:"testsIncreaseDate" validate:"required"`
+	ConfirmedCasesTotal         int    `json:"confirmedCasesTotal"  validate:"required"`
+	ConfirmedCasesIncrease      int    `json:"confirmedCasesIncrease"  validate:"required"`
+	ConfirmedCasesIncreaseDate  string `json:"confirmedCasesIncreaseDate" validate:"required"`
+	AntigenTestsTotal           int    `json:"antigenTestsTotal" validate:"required"`
+	AntigenTestsIncrease        int    `json:"antigenTestsIncrease"  validate:"required"`
+	AntigenTestsIncreaseDate    string `json:"antigenTestsIncreaseDate" validate:"required"`
+	PCRTestsTotal               int    `json:"pcrTestsTotal"  validate:"required"`
+	PCRTestsIncrease            int    `json:"pcrTestsIncrease"  validate:"required"`
+	PCRTestsIncreaseDate        string `json:"pcrTestsIncreaseDate" validate:"required"`
+	VaccinationsTotal           int    `json:"vaccinationsTotal" validate:"required"`
+	VaccinationsIncrease        int    `json:"vaccinationsIncrease" validate:"required"`
+	VaccinationsIncreaseDate    string `json:"vaccinationsIncreaseDate" validate:"required"`
+	VaccinationsDailyDosesDate  string `json:"vaccinationsDailyDosesDate validate:"required"`
+	VaccinationsDailyFirstDose  int    `json:"vaccinationsDailyFirstDose" validate:"required"`
+	VaccinationsDailySecondDose int    `json:"vaccinationsDailySecondDose" validate:"required"`
+	VaccinationsTotalFirstDose  int    `json:"vaccinationsTotalFirstDose" validate:"required"`
+	VaccinationsTotalSecondDose int    `json:"vaccinationsTotalSecondDose" validate:"required"`
 }
 
 //DownloadMetricsRequest Request for DownloadMetrics function
