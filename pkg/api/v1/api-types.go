@@ -73,7 +73,7 @@ type GetCovidDataResponse struct {
 	VaccinationsTotal           int    `json:"vaccinationsTotal" validate:"required"`
 	VaccinationsIncrease        int    `json:"vaccinationsIncrease" validate:"required"`
 	VaccinationsIncreaseDate    string `json:"vaccinationsIncreaseDate" validate:"required"`
-	VaccinationsDailyDosesDate  string `json:"vaccinationsDailyDosesDate validate:"required"`
+	VaccinationsDailyDosesDate  string `json:"vaccinationsDailyDosesDate" validate:"required"`
 	VaccinationsDailyFirstDose  int    `json:"vaccinationsDailyFirstDose" validate:"required"`
 	VaccinationsDailySecondDose int    `json:"vaccinationsDailySecondDose" validate:"required"`
 	VaccinationsTotalFirstDose  int    `json:"vaccinationsTotalFirstDose" validate:"required"`
