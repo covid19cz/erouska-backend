@@ -101,17 +101,19 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		shouldFallback = true
 	}
 
+	t, _ := time.Parse("20060102", date)
 	failed := false
 	vaccinationsFailed := false
 
 	totalsData, err := fetchTotals(ctx, storeClient, date)
 	if err != nil {
-		logger.Errorf("Error fetching data from firestore: %v", err)
 		failed = true
 		if !shouldFallback {
 			httputils.SendErrorResponse(w, r, err)
+			logger.Errorf("Error fetching data from firestore: %v", err)
 			return
 		}
+		logger.Infof("Totals data for %s not found. Trying get yesterday's data.", date)
 	}
 
 	if failed && shouldFallback {
@@ -127,21 +129,24 @@ func GetCovidData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	vaccinationData, err := fetchVaccinations(ctx, storeClient, date)
+	vaccinationsDataDate := t.AddDate(0, 0, -1).Format("20060102")
+	vaccinationData, err := fetchVaccinations(ctx, storeClient, vaccinationsDataDate)
 	if err != nil {
-		logger.Errorf("Error fatching vaccination data from firestore: %v", err)
 		vaccinationsFailed = true
 		if !shouldFallback {
+			logger.Errorf("Error fatching vaccination data from firestore: %v", err)
 			httputils.SendErrorResponse(w, r, err)
 			return
 		}
+		logger.Infof("Vaccinations data for %s not found. Trying get yesterday's data.", date)
 	}
 
 	if vaccinationsFailed && shouldFallback {
-		// we try to fetch data from yesterday
-		t, _ := time.Parse("20060102", date)
-		vaccinationsDataDate := t.AddDate(0, 0, -1).Format("20060102")
-
+		// We try to fetch data from yesterday. In this vaccinations case,
+		// that is actually the day before yesterday,
+		// because totalsData contains yesterday's
+		// data under today date key.
+		vaccinationsDataDate = t.AddDate(0, 0, -2).Format("20060102")
 		vaccinationData, err = fetchVaccinations(ctx, storeClient, vaccinationsDataDate)
 		if err != nil {
 			logger.Errorf("Error refetching vaccinations firestore: %v", err)
