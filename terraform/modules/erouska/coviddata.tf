@@ -228,13 +228,13 @@ resource "google_project_iam_member" "downloadcoviddata" {
 # DownloadAndCountVaccinations
 
 data "google_cloudfunctions_function" "dwnvaccinations" {
-  name = "dwnvaccinations"
+  name = "DownloadAndCountVaccinations"
   project = var.project
 }
 
 resource "google_service_account" "dwnvaccinations" {
   account_id = "dwn-and-count-vaccinations"
-  display_name = "dwnvaccinations cloud function service account"
+  display_name = "DownloadAndCountVaccinations cloud function service account"
 }
 
 resource "google_project_iam_member" "dwnvaccinations" {
@@ -287,7 +287,7 @@ resource "google_cloud_scheduler_job" "downloadcovid-worker" {
 
 resource "google_service_account" "dwnvaccinations-invoker" {
   account_id   = "dwnvaccinations-invoker-sa"
-  display_name = "dwnvaccinations invoker"
+  display_name = "DownloadAndCountVaccinations invoker"
 }
 
 resource "google_project_iam_member" "dwnvaccinations-invoker" {
