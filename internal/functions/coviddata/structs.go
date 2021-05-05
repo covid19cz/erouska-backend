@@ -24,7 +24,7 @@ type covidDataDownloadRequest struct {
 type VaccinationData struct {
 	Date       string `json:"datum" validate:"required"`
 	Vaccine    string `json:"vakcina" validate:"required"`
-	RegionCode string `json:"kraj_nuts_kod validate:"required"`
+	RegionCode string `json:"kraj_nuts_kod" validate:"required"`
 	Region     string `json:"kraj_nazev" validate:"required"`
 	AgeGroup   string `json:"vekova_skupina" validate:"required"`
 	FirstDose  int    `json:"prvnich_davek" validate:"required"`
