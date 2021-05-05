@@ -227,7 +227,7 @@ resource "google_cloud_scheduler_job" "efgsdownyestkeys-worker" {
 
   name             = "efgsdownyestkeys-worker"
   region           = var.cloudscheduler_location
-  schedule         = "0 5 * * *"
+  schedule         = "0 2 * * *"
   time_zone        = "Europe/Prague"
   attempt_deadline = "600s"
 
