@@ -10,6 +10,8 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -89,6 +91,11 @@ func fetchVaccinationsData(ctx context.Context, client HTTPClient) (*Vaccination
 		vd.Date = date
 		vd.DailyFirstDose += v.FirstDose
 		vd.DailySecondDose += v.SecondDose
+		// each single dose vaccine is counted as completed after the first dose
+		if isSingleDoseVaccine(v.Vaccine) {
+			totalSecondDose += v.FirstDose
+			vd.DailySecondDose += v.FirstDose
+		}
 		totalFirstDose += v.FirstDose
 		totalSecondDose += v.SecondDose
 		sumByDate[date] = vd
@@ -122,4 +129,15 @@ func persistVaccinationsData(ctx context.Context, client store.Client, data *Vac
 
 	logger.Infof("Successfully written vaccination data to firestore (key %v): %+v", date, data)
 	return nil
+}
+
+func isSingleDoseVaccine(vaccine string) bool {
+	singleDoseVaccines := os.Getenv("SINGLE_DOSE_VACCINES")
+	list := strings.Split(singleDoseVaccines, ",")
+	for _, v := range list {
+		if v == vaccine {
+			return true
+		}
+	}
+	return false
 }
