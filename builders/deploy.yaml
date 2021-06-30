@@ -109,7 +109,7 @@ steps:
       - --runtime=go113
       - --memory=128
       - --service-account=dwn-and-count-vaccinations@${PROJECT_ID}.iam.gserviceaccount.com
-      - --set-env-vars=PROJECT_ID=${PROJECT_ID},UZIS_VACCINATION_METRICS_URL=${_UZIS_VACCINATION_METRICS_URL}
+      - --set-env-vars=PROJECT_ID=${PROJECT_ID},UZIS_VACCINATION_METRICS_URL=${_UZIS_VACCINATION_METRICS_URL},SINGLE_DOSE_VACCINES=${_SINGLE_DOSE_VACCINES_LIST}
   - name: "gcr.io/cloud-builders/gcloud"
     waitFor: ["-"]
     args:
