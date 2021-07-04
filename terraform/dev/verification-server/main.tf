@@ -6,7 +6,7 @@ terraform {
 }
 
 module "vf" {
-  source = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform?ref=v0.22.2"
+  source = "git::https://github.com/google/exposure-notifications-verification-server.git//terraform?ref=v0.31.0"
 
   project = var.project
   region  = var.region
