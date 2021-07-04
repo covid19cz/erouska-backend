@@ -11,7 +11,7 @@ provider "google" {
 }
 
 module "en" {
-  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=v0.22.1"
+  source = "git::https://github.com/google/exposure-notifications-server.git//terraform?ref=v0.31.0"
 
   project = var.project
   region  = var.region
