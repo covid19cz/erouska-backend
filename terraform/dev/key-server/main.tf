@@ -83,6 +83,8 @@ module "cdn" {
 
   name_prefix = "exposure-keys"
 
+  domains = ["cdn-dev.erouska.cz"]
+
   // TODO: this output is supported in newer terraform module version
   //bucket_name = module.en.export_bucket
   bucket_name = "exposure-notification-export-ejjud"
